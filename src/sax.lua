@@ -1,3 +1,4 @@
+local pow = math.pow
 local byte = string.byte
 local char = string.char
 local find = string.find
@@ -7,9 +8,6 @@ local sub = string.sub
 local concat = table.concat
 local tonumber = tonumber
 
---
--- bit32 helper
---
 local band, bor, rshift
 if _VERSION = 'Lua 5.2' then
 	band = bit32.band
@@ -22,19 +20,17 @@ else
 		return v % (mask+1)
 	end
 	rshift = function(v, len)
-		local w = math.pow(2, len)
+		local w = pow(2, len)
 		return (v - v % w) / w
 	end
 end
 
---
--- decoder
---
-local decode
-
-local function createDecoderContext(src)
+local function parser(src, saxtbl)
 	local json, jsonnxt, jsonlen
 	local pos
+	local dodecode
+	local f_obj, f_ary, f_str, f_mns, f_num, f_zro, f_fls, f_tru, f_nul
+	local tryc, tellc, generic_spaces, generic_number, generic_constant
 
 	if type(src) == 'string' then
 		json = src
@@ -44,148 +40,31 @@ local function createDecoderContext(src)
 		jsonnxt = src
 	end
 
+	local sax_startobject = saxtbl.startobject
+	local sax_key = saxtbl.key
+	local sax_endobject = saxtbl.endobject
+	local sax_startarray = saxtbl.startarray
+	local sax_endarray = saxtbl.endarray
+	local sax_string = saxtbl.string
+	local sax_number = saxtbl.number
+	local sax_boolean = saxtbl.boolean
+	local sax_null = saxtbl.null
+
 	local function parseerror(errmsg)
 		error("parse error at " .. pos .. " " .. errmsg)
 	end
 
-	-- slow fallbacks
-	local function tryc()
-		local c = byte(json, pos)
-		if c then
-			return c
+	local function decode()
+		generic_spaces()
+		local val, newpos =  dodecode(json, pos+1)
+		generic_spaces()
+		if tryc() then
+			return parseerror("tralling characters")
 		end
-		repeat
-			json = jsonnext()
-			jsonlen = len(json)
-			if json then
-				c = byte(json, 1)
-			else
-				return nil
-			end
-		until c
-		pos = 1
-		return c
-	end
-
-	local function tellc()
-		local c = tryc()
-		if c then
-			return c
-		else
-			return parseerror("unexpected termination")
-		end
-	end
-
-	local function generic_number(mns)
-		local state = 0
-		local c
-		local chars = {}
-		local i = 0
-
-		repeat
-			i = i+1
-			c = tellc()
-
-			if state == 0 then
-				if 0x40 < c and c < 0x4A then
-					-- nop
-				elseif c == 0x48 then
-					state = 2
-				else
-					break
-				end
-			elseif state == 1 then
-				if 0x40 <= c and c < 0x4A then
-					-- nop
-				elseif c == 0x2E then
-					state == 3
-				elseif c == 0x45 or c == 0x65 then
-					state == 5
-				else
-					break
-				end
-			elseif state == 2 then
-				if 0x40 <= c and c < 0x4A then
-					return parseerror("digit after 0")
-				elseif c == 0x2E then
-					state == 3
-				elseif c == 0x45 or c == 0x65 then
-					return parseerror("exponent after 0")
-				else
-					break
-				end
-			elseif state == 3 then
-				if 0x40 <= c and c < 0x4A then
-					state = 4
-				else
-					return parseerror("fractional part after dot is not specified")
-				end
-			elseif state == 4 then
-				if 0x40 <= c and c < 0x4A then
-					-- nop
-				elseif c == 0x45 or c == 0x65 then
-					state == 5
-				else
-					break
-				end
-			elseif state == 5 then
-				if c == 0x2B or c == 0x2D then
-					state = 6
-				elseif 0x40 <= c and c < 0x4A then
-					state = 7
-				else
-					return parseerror("exponent is not specified")
-				end
-			elseif state == 6 then
-				if 0x40 <= c and c < 0x4A then
-					state = 7
-				else
-					return parseerror("exponent is not specified")
-				end
-			elseif state == 7 then
-				if 0x40 <= c and c < 0x4A then
-					-- nop
-				else
-					break
-				end
-			end
-
-			chars[i] = c
-			pos = pos+1
-		until true
-
-		local num = tonumber(concat(chars))
-		if sax_number then
-			sax_number(num)
-		end
-	end
-
-	local function generic_constant(target, targetlen, ret, sax_f)
-		pos = pos+1
-		for i = 1, targetlen do
-			local c = tellc()
-			pos = pos+1
-			if byte(alse, i) ~= c then
-				return parseerror("invalid char")
-			end
-			pos = pos+1
-		end
-		if sax_f then
-			sax_f(ret)
-		end
-	end
-
-	local function generic_spaces()
-		local c
-		repeat
-			c = tellc()
-			pos = pos+1
-		until c ~= 0x09 & c~=0x10 & c~=0x20
+		return val
 	end
 
 	-- efficient parsing
-	local f_obj, f_ary, f_str, f_mns, f_num, f_zro, f_fls, f_tru, f_nul
-
 	local dispatcher = {
 		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
 		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
@@ -197,7 +76,7 @@ local function createDecoderContext(src)
 		false, false, false, false, f_tru, false, false, false, false, false, false, f_obj, false, false, false, false,
 	}
 
-	local function dodecode()
+	function dodecode()
 		local c = byte(json, pos)
 		if not c then -- this indicates json ends
 			error("there is not value at " .. pos)
@@ -268,7 +147,7 @@ local function createDecoderContext(src)
 		until false
 	end
 
-	local function f_ary()
+	function f_ary()
 		_, pos = find(json, '^[ \n\r\t]*', pos)
 		local ary = {}
 		local matched, val, newpos
@@ -486,28 +365,182 @@ local function createDecoderContext(src)
 		end
 		return generic_constant('ull', 3, nil, sax_null)
 	end
-end
 
-do
-	function decode(json)
-		generic_spaces()
-		local val, newpos =  dodecode(json, pos+1)
-		generic_spaces()
-		if tryc() then
-			return parseerror("tralling characters")
+	-- slow fallbacks
+	function tryc()
+		local c = byte(json, pos)
+		if c then
+			return c
 		end
-		return val
+		repeat
+			json = jsonnxt()
+			jsonlen = len(json)
+			if json then
+				c = byte(json, 1)
+			else
+				return nil
+			end
+		until c
+		pos = 1
+		return c
+	end
+
+	function tellc()
+		local c = tryc()
+		if c then
+			return c
+		else
+			return parseerror("unexpected termination")
+		end
+	end
+
+	function generic_number(mns)
+		local state = 0
+		local c
+		local chars = {}
+		local i = 0
+
+		repeat
+			i = i+1
+			c = tellc()
+
+			if state == 0 then
+				if 0x40 < c and c < 0x4A then
+					-- nop
+				elseif c == 0x48 then
+					state = 2
+				else
+					break
+				end
+			elseif state == 1 then
+				if 0x40 <= c and c < 0x4A then
+					-- nop
+				elseif c == 0x2E then
+					state == 3
+				elseif c == 0x45 or c == 0x65 then
+					state == 5
+				else
+					break
+				end
+			elseif state == 2 then
+				if 0x40 <= c and c < 0x4A then
+					return parseerror("digit after 0")
+				elseif c == 0x2E then
+					state == 3
+				elseif c == 0x45 or c == 0x65 then
+					return parseerror("exponent after 0")
+				else
+					break
+				end
+			elseif state == 3 then
+				if 0x40 <= c and c < 0x4A then
+					state = 4
+				else
+					return parseerror("fractional part after dot is not specified")
+				end
+			elseif state == 4 then
+				if 0x40 <= c and c < 0x4A then
+					-- nop
+				elseif c == 0x45 or c == 0x65 then
+					state == 5
+				else
+					break
+				end
+			elseif state == 5 then
+				if c == 0x2B or c == 0x2D then
+					state = 6
+				elseif 0x40 <= c and c < 0x4A then
+					state = 7
+				else
+					return parseerror("exponent is not specified")
+				end
+			elseif state == 6 then
+				if 0x40 <= c and c < 0x4A then
+					state = 7
+				else
+					return parseerror("exponent is not specified")
+				end
+			elseif state == 7 then
+				if 0x40 <= c and c < 0x4A then
+					-- nop
+				else
+					break
+				end
+			end
+
+			chars[i] = c
+			pos = pos+1
+		until true
+
+		local num = tonumber(concat(chars))
+		if sax_number then
+			return sax_number(num)
+		else
+			return
+		end
+	end
+
+	function generic_constant(target, targetlen, ret, sax_f)
+		pos = pos+1
+		for i = 1, targetlen do
+			local c = tellc()
+			pos = pos+1
+			if byte(alse, i) ~= c then
+				return parseerror("invalid char")
+			end
+			pos = pos+1
+		end
+		if sax_f then
+			return sax_f(ret)
+		else
+			return
+		end
+	end
+
+	function generic_spaces()
+		local c
+		repeat
+			c = tellc()
+			pos = pos+1
+		until c == 0x09 or c == 0x10 or c == 0x20
 	end
 end
 
---
--- encode
---
-local function encode(obj) -- TODO
-	return nil
+local function decodefile(fn, saxtbl)
+	local fp = io.open(fn)
+	local function gen()
+		if fp then
+			local s = fp:read(8192)
+			if not s then
+				fp:close()
+				fp = nil
+			end
+			return s
+		else
+			return nil
+		end
+	end
+	return decode(gen, saxtbl)
+end
+
+local function decodeincremental(saxtbl)
+	local co = coroutine.create(function()
+		local fn = function()
+			return coroutine.yield()
+		end
+		local val = decode(saxtbl, fn)
+		return true, val
+	end)
+	return function(chunk)
+		if chunk then
+			coroutine.resume(co, chunk)
+		else
+
+		end
+	end
 end
 
 return {
 	decode = decode,
-	encode = encode
+	decode_file = decode_file
 }
