@@ -158,85 +158,85 @@ local function newparser(src, saxtbl)
 	end
 
 	-- parse numbers
+	local generic_number_automata = {
+		function (c)
+			if 0x30 < c and c < 0x3A then
+				return 2
+			elseif c == 0x30 then
+				return 3
+			else
+				return 0
+			end
+		end,
+		function (c)
+			if 0x30 <= c and c < 0x3A then
+				return 2
+			elseif c == 0x2E then
+				return 4
+			elseif c == 0x45 or c == 0x65 then
+				return 6
+			else
+				return 0
+			end
+		end,
+		function (c)
+			if 0x30 <= c and c < 0x3A then
+				return parseerror("digit after 0")
+			elseif c == 0x2E then
+				return 4
+			elseif c == 0x45 or c == 0x65 then
+				return parseerror("exponent after 0")
+			else
+				return 0
+			end
+		end,
+		function (c)
+			if 0x30 <= c and c < 0x3A then
+				return 5
+			else
+				return parseerror("fractional part after dot is not specified")
+			end
+		end,
+		function (c)
+			if 0x30 <= c and c < 0x3A then
+				return 5
+				-- nop
+			elseif c == 0x45 or c == 0x65 then
+				return 6
+			else
+				return 0
+			end
+		end,
+		function (c)
+			if c == 0x2B or c == 0x2D then
+				return 7
+			elseif 0x30 <= c and c < 0x3A then
+				return 8
+			else
+				return parseerror("exponent is not specified")
+			end
+		end,
+		function (c)
+			if 0x30 <= c and c < 0x3A then
+				return 8
+			else
+				return parseerror("exponent is not specified")
+			end
+		end,
+		function (c)
+			if 0x30 <= c and c < 0x3A then
+				return 8
+			else
+				return 0
+			end
+		end,
+	}
+
 	local function generic_number(mns)
 		local state = 1
 		local c
 		local chars = {}
 		local i = 0
-
-		local automata = {
-			function (c)
-				if 0x30 < c and c < 0x3A then
-					return 2
-				elseif c == 0x30 then
-					return 3
-				else
-					return 0
-				end
-			end,
-			function (c)
-				if 0x30 <= c and c < 0x3A then
-					return 2
-				elseif c == 0x2E then
-					return 4
-				elseif c == 0x45 or c == 0x65 then
-					return 6
-				else
-					return 0
-				end
-			end,
-			function (c)
-				if 0x30 <= c and c < 0x3A then
-					return parseerror("digit after 0")
-				elseif c == 0x2E then
-					return 4
-				elseif c == 0x45 or c == 0x65 then
-					return parseerror("exponent after 0")
-				else
-					return 0
-				end
-			end,
-			function (c)
-				if 0x30 <= c and c < 0x3A then
-					return 5
-				else
-					return parseerror("fractional part after dot is not specified")
-				end
-			end,
-			function (c)
-				if 0x30 <= c and c < 0x3A then
-					return 5
-					-- nop
-				elseif c == 0x45 or c == 0x65 then
-					return 6
-				else
-					return 0
-				end
-			end,
-			function (c)
-				if c == 0x2B or c == 0x2D then
-					return 7
-				elseif 0x30 <= c and c < 0x3A then
-					return 8
-				else
-					return parseerror("exponent is not specified")
-				end
-			end,
-			function (c)
-				if 0x30 <= c and c < 0x3A then
-					return 8
-				else
-					return parseerror("exponent is not specified")
-				end
-			end,
-			function (c)
-				if 0x30 <= c and c < 0x3A then
-					return 8
-				else
-					return 0
-				end
-			end,
-		}
 
 		pos = pos-1
 		repeat
@@ -244,7 +244,7 @@ local function newparser(src, saxtbl)
 			i = i+1
 			c = tellc()
 			chars[i] = c
-			state = automata[state](c)
+			state = generic_number_automata[state](c)
 		until state == 0
 
 		local num = tonumber(concat(chars))
@@ -309,7 +309,7 @@ local function newparser(src, saxtbl)
 	end
 
 	-- parse strings
-	local function dosubst()
+	local function f_str_subst()
 		local u8
 		if ch == 'u' then
 			local l = len(rest)
@@ -384,7 +384,7 @@ local function newparser(src, saxtbl)
 		pos = newpos+1
 		str = str .. sub(json, pos, newpos-1)
 		if bs then
-			str = gsub(str, '\\(.)([^\]*)', dosubst)
+			str = gsub(str, '\\(.)([^\]*)', f_str_subst)
 		end
 
 		if iskey then
