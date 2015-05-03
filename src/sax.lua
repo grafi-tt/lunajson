@@ -159,82 +159,93 @@ local function newparser(src, saxtbl)
 
 	-- parse numbers
 	local function generic_number(mns)
-		local state = 0
+		local state = 1
 		local c
 		local chars = {}
 		local i = 0
 
-		repeat
-			i = i+1
-			c = tellc()
-
-			if state == 0 then
+		local automata = {
+			function (c)
 				if 0x30 < c and c < 0x3A then
-					state = 1
+					return 2
 				elseif c == 0x30 then
-					state = 2
+					return 3
 				else
-					break
+					return 0
 				end
-			elseif state == 1 then
+			end,
+			function (c)
 				if 0x30 <= c and c < 0x3A then
-					-- nop
+					return 2
 				elseif c == 0x2E then
-					state = 3
+					return 4
 				elseif c == 0x45 or c == 0x65 then
-					state = 5
+					return 6
 				else
-					break
+					return 0
 				end
-			elseif state == 2 then
+			end,
+			function (c)
 				if 0x30 <= c and c < 0x3A then
 					return parseerror("digit after 0")
 				elseif c == 0x2E then
-					state = 3
+					return 4
 				elseif c == 0x45 or c == 0x65 then
 					return parseerror("exponent after 0")
 				else
-					break
+					return 0
 				end
-			elseif state == 3 then
+			end,
+			function (c)
 				if 0x30 <= c and c < 0x3A then
-					state = 4
+					return 5
 				else
 					return parseerror("fractional part after dot is not specified")
 				end
-			elseif state == 4 then
+			end,
+			function (c)
 				if 0x30 <= c and c < 0x3A then
+					return 5
 					-- nop
 				elseif c == 0x45 or c == 0x65 then
-					state = 5
+					return 6
 				else
-					break
+					return 0
 				end
-			elseif state == 5 then
+			end,
+			function (c)
 				if c == 0x2B or c == 0x2D then
-					state = 6
+					return 7
 				elseif 0x30 <= c and c < 0x3A then
-					state = 7
+					return 8
 				else
 					return parseerror("exponent is not specified")
 				end
-			elseif state == 6 then
+			end,
+			function (c)
 				if 0x30 <= c and c < 0x3A then
-					state = 7
+					return 8
 				else
 					return parseerror("exponent is not specified")
 				end
-			elseif state == 7 then
+			end,
+			function (c)
 				if 0x30 <= c and c < 0x3A then
-					-- nop
+					return 8
 				else
-					break
+					return 0
 				end
-			end
+			end,
+		}
 
-			chars[i] = c
+		pos = pos-1
+		repeat
 			pos = pos+1
-		until false
+			i = i+1
+			c = tellc()
+			chars[i] = c
+			state = automata[state](c)
+		until state == 0
 
 		local num = tonumber(concat(chars))
 		if sax_number then
@@ -570,7 +581,7 @@ local function newfileparser(fn, saxtbl)
 	local function gen()
 		local s
 		if fp then
-			s = fp:read(8192)
+			s = fp:read(1)
 			if not s then
 				fp:close()
 				fp = nil
