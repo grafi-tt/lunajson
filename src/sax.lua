@@ -171,15 +171,15 @@ local function newparser(src, saxtbl)
 			c = tellc()
 
 			if state == 0 then
-				if 0x40 < c and c < 0x4A then
-					-- nop
-				elseif c == 0x48 then
+				if 0x30 < c and c < 0x3A then
+					state = 1
+				elseif c == 0x30 then
 					state = 2
 				else
 					break
 				end
 			elseif state == 1 then
-				if 0x40 <= c and c < 0x4A then
+				if 0x30 <= c and c < 0x3A then
 					-- nop
 				elseif c == 0x2E then
 					state = 3
@@ -189,7 +189,7 @@ local function newparser(src, saxtbl)
 					break
 				end
 			elseif state == 2 then
-				if 0x40 <= c and c < 0x4A then
+				if 0x30 <= c and c < 0x3A then
 					return parseerror("digit after 0")
 				elseif c == 0x2E then
 					state = 3
@@ -199,13 +199,13 @@ local function newparser(src, saxtbl)
 					break
 				end
 			elseif state == 3 then
-				if 0x40 <= c and c < 0x4A then
+				if 0x30 <= c and c < 0x3A then
 					state = 4
 				else
 					return parseerror("fractional part after dot is not specified")
 				end
 			elseif state == 4 then
-				if 0x40 <= c and c < 0x4A then
+				if 0x30 <= c and c < 0x3A then
 					-- nop
 				elseif c == 0x45 or c == 0x65 then
 					state = 5
@@ -215,19 +215,19 @@ local function newparser(src, saxtbl)
 			elseif state == 5 then
 				if c == 0x2B or c == 0x2D then
 					state = 6
-				elseif 0x40 <= c and c < 0x4A then
+				elseif 0x30 <= c and c < 0x3A then
 					state = 7
 				else
 					return parseerror("exponent is not specified")
 				end
 			elseif state == 6 then
-				if 0x40 <= c and c < 0x4A then
+				if 0x30 <= c and c < 0x3A then
 					state = 7
 				else
 					return parseerror("exponent is not specified")
 				end
 			elseif state == 7 then
-				if 0x40 <= c and c < 0x4A then
+				if 0x30 <= c and c < 0x3A then
 					-- nop
 				else
 					break
@@ -236,7 +236,7 @@ local function newparser(src, saxtbl)
 
 			chars[i] = c
 			pos = pos+1
-		until true
+		until false
 
 		local num = tonumber(concat(chars))
 		if sax_number then
@@ -398,7 +398,7 @@ local function newparser(src, saxtbl)
 			doparse()
 			_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 			if not newpos then
-				_, newpos = find(json, '^[ \n\r\t]*%]', newpos)
+				_, newpos = find(json, '^[ \n\r\t]*%]', pos)
 				if newpos then
 					pos = newpos+1
 					if sax_endarray then
@@ -411,6 +411,7 @@ local function newparser(src, saxtbl)
 				local c = byte(json, pos)
 				if c == 0x2C then
 					pos = pos+1
+					spaces()
 				elseif c == 0x5D then
 					pos = pos+1
 					if sax_endarray then
@@ -472,9 +473,9 @@ local function newparser(src, saxtbl)
 				local c = byte(json, pos)
 				if c == 0x2C then
 					pos = pos+1
+					spaces()
 				elseif c == 0x7D then
 					pos = pos+1
-					spaces()
 					if sax_endobject then
 						return sax_endobject()
 					else
@@ -505,7 +506,11 @@ local function newparser(src, saxtbl)
 	function doparse()
 		local c = byte(json, pos)
 		if not c then
-			c = tellc()
+			jsonnext()
+			c = byte(json, pos)
+			if not c then
+				error("unexpected termination")
+			end
 		end
 		local f = dispatcher[c+1]
 		if not f then
