@@ -104,10 +104,8 @@ local function newparser(src, saxtbl)
 
 	-- parse constants
 	local function generic_constant(target, targetlen, ret, sax_f)
-		pos = pos+1
 		for i = 1, targetlen do
 			local c = tellc()
-			pos = pos+1
 			if byte(target, i) ~= c then
 				return parseerror("invalid char")
 			end
@@ -358,7 +356,13 @@ local function newparser(src, saxtbl)
 					break
 				end
 				str = str .. sub(json, pos, jsonlen)
+				if pos == jsonlen+2 then
+					newpos = true -- reusing variable
+				end
 				jsonnxt()
+				if newpos then
+					pos = 2
+				end
 			until false
 			if byte(json, newpos) == 0x22 then
 				break
@@ -412,6 +416,7 @@ local function newparser(src, saxtbl)
 				if c == 0x2C then
 					pos = pos+1
 					spaces()
+					newpos = pos-1
 				elseif c == 0x5D then
 					pos = pos+1
 					if sax_endarray then
@@ -474,6 +479,7 @@ local function newparser(src, saxtbl)
 				if c == 0x2C then
 					pos = pos+1
 					spaces()
+					newpos = pos-1
 				elseif c == 0x7D then
 					pos = pos+1
 					if sax_endobject then
