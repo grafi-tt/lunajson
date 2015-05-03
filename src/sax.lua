@@ -510,15 +510,7 @@ local function newparser(src, saxtbl)
 	}
 
 	function doparse()
-		local c = byte(json, pos)
-		if not c then
-			jsonnext()
-			c = byte(json, pos)
-			if not c then
-				error("unexpected termination")
-			end
-		end
-		local f = dispatcher[c+1]
+		local f = dispatcher[byte(json, pos)+1] -- byte(json, pos) is always available here
 		if not f then
 			parseerror("unknown value")
 		end
