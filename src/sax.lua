@@ -198,7 +198,7 @@ local function newparser(src, saxtbl)
 		end
 
 		c = byte(str, newpos+1)
-		if expc == 0x45 or expc == 0x65 then
+		if c == 0x45 or c == 0x65 then
 			_, newpos = find(str, '^[+-]?[0-9]+', newpos+2)
 		end
 
