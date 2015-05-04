@@ -295,7 +295,7 @@ local function newparser(src, saxtbl)
 
 	local function f_num(mns)
 		local _, newpos = find(json, '^[0-9]*%.?[0-9]*', pos)
-		if byte(newpos) ~= 0x2E then -- check that num is not ended by comma
+		if byte(json, newpos) ~= 0x2E then -- check that num is not ended by comma
 			return cont_number(mns, newpos)
 		end
 		pos = pos-1
@@ -419,42 +419,39 @@ local function newparser(src, saxtbl)
 			sax_startarray()
 		end
 		spaces()
-		local newpos
-		repeat
-			doparse()
-			_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
-			if not newpos then
-				_, newpos = find(json, '^[ \n\r\t]*%]', pos)
-				if newpos then
-					pos = newpos+1
-					if sax_endarray then
-						return sax_endarray()
-					else
-						return
+		if byte(json, pos) ~= 0x5D then
+			local newpos
+			repeat
+				doparse()
+				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				if not newpos then
+					_, newpos = find(json, '^[ \n\r\t]*%]', pos)
+					if newpos then
+						pos = newpos
+						break
 					end
-				end
-				spaces()
-				local c = byte(json, pos)
-				if c == 0x2C then
-					pos = pos+1
 					spaces()
-					newpos = pos-1
-				elseif c == 0x5D then
-					pos = pos+1
-					if sax_endarray then
-						return sax_endarray()
+					local c = byte(json, pos)
+					if c == 0x2C then
+						pos = pos+1
+						spaces()
+						newpos = pos-1
+					elseif c == 0x5D then
+						break
 					else
-						return
+						return parseerror("no closing bracket of an array")
 					end
-				else
-					return parseerror("no closing bracket of an array")
 				end
-			end
-			pos = newpos+1
-			if pos > jsonlen then
-				spaces()
-			end
-		until false
+				pos = newpos+1
+				if pos > jsonlen then
+					spaces()
+				end
+			until false
+		end
+		pos = pos+1
+		if sax_endarray then
+			return sax_endarray()
+		end
 	end
 
 	-- parse objects
@@ -463,61 +460,58 @@ local function newparser(src, saxtbl)
 			sax_startobject()
 		end
 		spaces()
-		local newpos
-		repeat
-			if byte(json, pos) ~= 0x22 then
-				return parseerror("not key")
-			end
-			pos = pos+1
-			f_str(true)
-			_, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
-			if not matched then
-				spaces()
-				if byte(json, pos) ~= 0x3A then
-					return parseerror("no colon after a key")
+		if byte(json, pos) ~= 0x7D then
+			local newpos
+			repeat
+				if byte(json, pos) ~= 0x22 then
+					return parseerror("not key")
 				end
 				pos = pos+1
-				spaces()
-				newpos = pos-1
-			end
-			pos = newpos+1
-			if pos > jsonlen then
-				spaces()
-			end
-			doparse()
-			_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
-			if not newpos then
-				_, newpos = find(json, '^[ \n\r\t]*}', pos)
-				if newpos then
-					pos = newpos+1
-					if sax_endobject then
-						return sax_endobject()
-					else
-						return
+				f_str(true)
+				_, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
+				if not matched then
+					spaces()
+					if byte(json, pos) ~= 0x3A then
+						return parseerror("no colon after a key")
 					end
-				end
-				spaces()
-				local c = byte(json, pos)
-				if c == 0x2C then
 					pos = pos+1
 					spaces()
 					newpos = pos-1
-				elseif c == 0x7D then
-					pos = pos+1
-					if sax_endobject then
-						return sax_endobject()
-					else
-						return
-					end
-				else
-					return parseerror("no closing bracket of an object")
 				end
-			end
-			pos = newpos+1
-			if pos > jsonlen then
-				spaces()
-			end
-		until false
+				pos = newpos+1
+				if pos > jsonlen then
+					spaces()
+				end
+				doparse()
+				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				if not newpos then
+					_, newpos = find(json, '^[ \n\r\t]*}', pos)
+					if newpos then
+						pos = newpos
+						break
+					end
+					spaces()
+					local c = byte(json, pos)
+					if c == 0x2C then
+						pos = pos+1
+						spaces()
+						newpos = pos-1
+					elseif c == 0x7D then
+						break
+					else
+						return parseerror("no closing bracket of an object")
+					end
+				end
+				pos = newpos+1
+				if pos > jsonlen then
+					spaces()
+				end
+			until false
+		end
+		pos = pos+1
+		if sax_endobject then
+			return sax_endobject()
+		end
 	end
 
 	local dispatcher = {
