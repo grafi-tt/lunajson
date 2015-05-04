@@ -321,12 +321,14 @@ local function newparser(src, saxtbl)
 	end
 
 	-- parse strings
-	local function f_str_subst()
+	local f_str_surrogateprev
+
+	local function f_str_subst(ch, rest)
 		local u8
 		if ch == 'u' then
 			local l = len(rest)
 			if l >= 4 then
-				local ucode = tonumber(sub(rest, 1, 4))
+				local ucode = tonumber(sub(rest, 1, 4), 16)
 				rest = sub(rest, 5, l)
 				if ucode < 0x80 then -- 1byte
 					u8 = char(ucode)
@@ -335,24 +337,24 @@ local function newparser(src, saxtbl)
 				elseif ucode < 0xD800 and 0xE00 <= ucode then -- 3byte
 					u8 = char(0xE0 + rshift(ucode, 12), 0x80 + band(rshift(ucode, 6), 0x3F), 0x80 + band(ucode, 0x3F))
 				elseif 0xD800 <= ucode and ucode < 0xDC000 then -- surrogate pair 1st
-					if surrogateprev == 0 then
-						surrogateprev = ucode
+					if f_str_surrogateprev == 0 then
+						f_str_surrogateprev = ucode
 						if l == 4 then
 							return ''
 						end
 					end
 				else -- surrogate pair 2nd
-					if surrogateprev == 0 then
-						surrogateprev = 0x1234
+					if f_str_surrogateprev == 0 then
+						f_str_surrogateprev = 0x1234
 					else
-						surrogateprev = 0
-						ucode = 0x100000 + band(surrogateprev, 0x03FF) * 0x400 + band(ucode, 0x03FF)
+						f_str_surrogateprev = 0
+						ucode = 0x100000 + band(f_str_surrogateprev, 0x03FF) * 0x400 + band(ucode, 0x03FF)
 						u8 = char(0xF0 + rshift(ucode, 18), 0x80 + band(rshift(ucode, 12), 0x3F), 0x80 + band(rshift(ucode, 6), 0x3F), 0x80 + band(ucode, 0x3F))
 					end
 				end
 			end
 		end
-		if surrogateprev ~= 0 then
+		if f_str_surrogateprev ~= 0 then
 			parseerror("invalid surrogate pair")
 		end
 		local tbl = {
@@ -369,35 +371,36 @@ local function newparser(src, saxtbl)
 	end
 
 	local function f_str(iskey)
+		local pos2 = pos
 		local newpos
 		local str = ''
 		local bs
 		repeat
 			repeat
-				newpos = find(json, '[\\"]', pos)
+				newpos = find(json, '[\\"]', pos2)
 				if newpos then
 					break
 				end
 				str = str .. sub(json, pos, jsonlen)
-				if pos == jsonlen+2 then
-					newpos = true -- reusing variable
+				if pos2 == jsonlen+2 then
+					pos2 = 2
+				else
+					pos2 = 1
 				end
 				jsonnxt()
-				if newpos then
-					pos = 2
-				end
 			until false
 			if byte(json, newpos) == 0x22 then
 				break
 			end
-			pos = newpos+2
+			pos2 = newpos+2
 			bs = true
 		until false
 		str = str .. sub(json, pos, newpos-1)
 		pos = newpos+1
 
 		if bs then
-			str = gsub(str, '\\(.)([^\]*)', f_str_subst)
+			f_str_surrogateprev = 0
+			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
 		end
 
 		if iskey then
