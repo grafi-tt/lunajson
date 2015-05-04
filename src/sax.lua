@@ -393,8 +393,9 @@ local function newparser(src, saxtbl)
 			pos = newpos+2
 			bs = true
 		until false
-		pos = newpos+1
 		str = str .. sub(json, pos, newpos-1)
+		pos = newpos+1
+
 		if bs then
 			str = gsub(str, '\\(.)([^\]*)', f_str_subst)
 		end
