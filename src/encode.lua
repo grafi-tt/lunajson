@@ -61,9 +61,13 @@ local function encode(v, nullv)
 	setmetatable(f_string_subst, f_string_subst)
 
 	local function f_string(s)
-		builder[i] = '"'
 		-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
-		builder[i+1] = gsub(s, '[^\32-\33\35-\91\93-\255]', f_string_subst)
+		local pat = '[^\32-\33\35-\91\93-\255]'
+		builder[i] = '"'
+		if find(s, pat) then
+			s = gsub(s, pat, f_string_subst)
+		end
+		builder[i+1] = s
 		builder[i+2] = '"'
 		i = i+3
 	end
