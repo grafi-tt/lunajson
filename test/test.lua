@@ -56,7 +56,8 @@ local decoders = {
 	lunasax = require 'sax-decode',
 	lunasimple = function(json, nv)
 		local dec = require 'lunajson.decode'
-		return dec(json, 1, nv)
+		local v, pos = dec(json, 1, nv)
+		return v
 	end,
 }
 local nullv = function() end
