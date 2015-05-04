@@ -1,5 +1,6 @@
 local byte = string.byte
 local format = string.format
+local find = string.find
 local gsub = string.gsub
 local rawequal = rawequal
 local tostring = tostring
@@ -11,12 +12,39 @@ local function encode(v, nullv)
 	local builder = {}
 	local visited = {}
 
-	local dodecode
-
 	local function f_tostring(v)
 		builder[i] = tostring(v)
 		i = i+1
 	end
+
+	local radixmark = find(tostring(0.5), '[^0-9]')
+	local delimmark = find(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
+	if radixmark == '.' then
+		radixmark == nil
+	end
+
+	local f_number = f_tostring
+	if radixmark or and delimmark then
+		if radixmark and find(radixmark, '%W') then
+			radixmark = '%' .. radixmark
+		end
+		if delimmark and find(selimmark, '%W') then
+			delimmark = '%' .. delimmark
+		end
+		f_number = function(n)
+			local s = tostring(n)
+			if delimmark then
+				s = gsub(s, delimmark, '', )
+			end
+			if radixmark then
+				s = gsub(s, radixmark, '.')
+			end
+			builder[i] = s
+			i = i+1
+		end
+	end
+
+	local dodecode
 
 	local f_string_subst = {
 		['"'] = '\\"',

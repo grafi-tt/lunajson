@@ -158,6 +158,17 @@ local function newparser(src, saxtbl)
 	end
 
 	-- parse numbers
+	local radixmark = find(tostring(0.5), '[^0-9]')
+	local fixedtonumber = tonumber
+	if radixmark ~= '.' then
+		if find(radixmark, '%W') then
+			radixmark = '%' .. radixmark
+		end
+		fixedtonumber = function(s)
+			return tonumber(gsub(s, radixmark, ''))
+		end
+	end
+
 	local generic_number_automata = {
 		function (c)
 			if 0x30 < c and c < 0x3A then
@@ -247,7 +258,7 @@ local function newparser(src, saxtbl)
 			state = generic_number_automata[state](c)
 		until state == 0
 
-		local num = tonumber(concat(chars))
+		local num = fixedtonumber(concat(chars))
 		if sax_number then
 			return sax_number(num)
 		else
@@ -262,7 +273,7 @@ local function newparser(src, saxtbl)
 		end
 		newpos = newpos or jsonlen
 		if newpos ~= jsonlen then
-			local num = tonumber(sub(json, pos-1, newpos))
+			local num = fixedtonumber(sub(json, pos-1, newpos))
 			pos = newpos+1
 			if mns then
 				num = -num
