@@ -5,7 +5,6 @@ local gsub = string.gsub
 local rawequal = rawequal
 local tostring = tostring
 local type = type
-local inf = 1/0
 
 local function encode(v, nullv)
 	local i = 1
