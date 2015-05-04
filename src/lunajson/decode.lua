@@ -32,7 +32,7 @@ local function decode(json, pos, nullv)
 
 	-- helper
 	local function decodeerror(errmsg)
-		error("parse error at " .. acc + pos .. ": " .. errmsg)
+		error("parse error at " .. pos .. ": " .. errmsg)
 	end
 
 	-- parse constants
@@ -75,14 +75,10 @@ local function decode(json, pos, nullv)
 		end
 	end
 
-	local function f_num(mns)
-		local newpos = pos
-		if byte(json, pos) ~= 0x30 then
-			newpos = find(json, '^[0-9]*', newpos)
-			newpos = newpos+1
-		end
+	local function f_zro(mns, newpos)
+		newpos = newpos or pos
 		if byte(json, newpos) == 0x2E then
-			local _, newpos = find(json, '^[0-9]+', newpos+1)
+			_, newpos = find(json, '^[0-9]+', newpos+1)
 			if not newpos then
 				return decodeerror('invalid number')
 			end
@@ -96,15 +92,34 @@ local function decode(json, pos, nullv)
 			end
 			newpos = newpos+1
 		end
-		local num = fixedtonumber(sub(json, pos, newpos-1))
+		local num = fixedtonumber(sub(json, pos-1, newpos-1))
+		if mns then
+			num = -num
+		end
 		pos = newpos
 		return num
 	end
 
+	local function f_num(mns)
+		local newpos = pos
+		_, newpos = find(json, '^[0-9]*', newpos)
+		newpos = newpos+1
+		return f_zro(mns, newpos)
+	end
+
 	local function f_mns()
 		local c = byte(json, pos)
-		if c and 0x30 <= c and c < 0x3A then
-			return f_num(true)
+		if c then
+			pos = pos+1
+			if c > 0x30 then
+				if c < 0x3A then
+					return f_num(true)
+				end
+			else
+				if c > 0x2F then
+					return f_zro(true)
+				end
+			end
 		end
 		decodeerror('invalid number')
 	end
@@ -165,7 +180,7 @@ local function decode(json, pos, nullv)
 		repeat
 			pos2 = newpos+2
 			newpos = find(json, '[\\"]', pos2)
-			if newpos then
+			if not newpos then
 				decodeerror("unterminated string")
 			end
 		until byte(json, newpos) == 0x22
@@ -194,7 +209,7 @@ local function decode(json, pos, nullv)
 			repeat
 				i = i+1
 				pos = newpos+1
-				ary[i] = doparse()
+				ary[i] = dodecode()
 				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 			until not newpos
 
@@ -249,7 +264,7 @@ local function decode(json, pos, nullv)
 		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
 		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
 		false, false, f_str, false, false, false, false, false, false, false, false, false, false, f_mns, false, false,
-		f_zro, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, false, false, false, false, false, false,
+		f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, false, false, false, false, false, false,
 		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
 		false, false, false, false, false, false, false, false, false, false, false, f_ary, false, false, false, false,
 		false, false, false, false, false, false, f_fls, false, false, false, false, false, false, false, f_nul, false,
@@ -266,7 +281,7 @@ local function decode(json, pos, nullv)
 			decodeerror("invalid value")
 		end
 		pos = pos+1
-		f()
+		return f()
 	end
 
 	_, pos = find(json, '^[ \n\r\t]*', pos)

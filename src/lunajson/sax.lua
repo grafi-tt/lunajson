@@ -255,11 +255,11 @@ local function newparser(src, saxtbl)
 		if c then
 			pos = pos+1
 			if c > 0x30 then
-				if c < 0x4a then
+				if c < 0x3A then
 					return f_num(true)
 				end
 			else
-				if c > 0x2f then
+				if c > 0x2F then
 					return f_zro(true)
 				end
 			end
