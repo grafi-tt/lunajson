@@ -1,15 +1,16 @@
 local byte = string.byte
 local format = string.format
 local gsub = string.gsub
+local rawequal = rawequal
 local tostring = tostring
 local type = type
 
-local function encode(v)
+local function encode(v, nullv)
 	local i = 1
 	local builder = {}
 	local visited = {}
 
-	local dispatcher
+	local dodecode
 
 	local function f_tostring(v)
 		builder[i] = tostring(v)
@@ -38,51 +39,6 @@ local function encode(v)
 		i = i+3
 	end
 
-	local function f_table_arraylen(o)
-		if visited[o] then
-			error("loop detected")
-		end
-		visited[o] = true
-
-		local alen = o[0]
-		if alen then
-			builder[i] = '['
-			i = i+1
-			for j = 1, alen do
-				local v = o[j]
-				dispatcher[type(v)](v)
-				builder[i] = ','
-				i = i+1
-			end
-			if alen > 0 then
-				i = i-1
-			end
-			builder[i] = ']'
-			i = i+1
-			return
-		end
-
-		builder[i] = '{'
-		i = i+1
-		local j = i
-		for k, v in pairs(o) do
-			if type(k) ~= 'string' then
-				error("non-string key")
-			end
-			f_string(k)
-			builder[i] = ':'
-			i = i+1
-			dispatcher[type(v)](v)
-			builder[i] = ','
-			i = i+1
-		end
-		if i > j then
-			i = i-1
-		end
-		builder[i] = ']'
-		i = i+1
-	end
-
 	local function f_table(o)
 		if visited[o] then
 			error("loop detected")
@@ -95,7 +51,7 @@ local function encode(v)
 			i = i+1
 			local j = 2
 			repeat
-				dispatcher[type(v)](v)
+				dodecode(v)
 				v = o[j]
 				if v == nil then
 					break
@@ -119,7 +75,7 @@ local function encode(v)
 			f_string(k)
 			builder[i] = ':'
 			i = i+1
-			dispatcher[type(v)](v)
+			dodecode(v)
 			builder[i] = ','
 			i = i+1
 		end
@@ -130,8 +86,7 @@ local function encode(v)
 		i = i+1
 	end
 
-	dispatcher = {
-		['nil'] = f_tostring,
+	local dispatcher = {
 		boolean = f_tostring,
 		number = f_tostring,
 		string = f_string,
@@ -142,18 +97,20 @@ local function encode(v)
 	}
 	setmetatable(dispatcher, dispatcher)
 
+	function dodecode(v)
+		if rawequal(v, nullv) then
+			builder[i] = 'null'
+			i = i+1
+			return
+		end
+		dispatcher[type(v)](v)
+	end
+
 	-- exec
-	dispatcher[type(v)](v)
+	dodecode(v)
 	return table.concat(builder)
 end
-return encode
---[[
-local j = encode({
-	a = 1,
-	b = true,
-	c = nil,
-	d = "hoge",
-	e = {2, false, "fuga"}
-})
-print(j)
---]]
+
+return {
+	encode = encode
+}
