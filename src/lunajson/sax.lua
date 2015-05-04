@@ -421,7 +421,7 @@ local function newparser(src, saxtbl)
 				pos = pos+1
 				f_str(true)
 				_, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
-				if not matched then
+				if not newpos then
 					spaces()
 					if byte(json, pos) ~= 0x3A then
 						return parseerror("no colon after a key")
