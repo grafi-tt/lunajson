@@ -6,8 +6,8 @@ local function isomorphic(u, v)
 	else
 		if s == 'table' then
 			local ukeys = {}
-			for k, _ in pairs(u) do
-				table.insert(ukeys, k)
+			for j, _ in pairs(u) do
+				table.insert(ukeys, j)
 			end
 			table.sort(ukeys)
 			local vkeys = {}
@@ -20,7 +20,12 @@ local function isomorphic(u, v)
 				local j = ukeys[i]
 				local k = vkeys[i]
 				if j ~= k then
-					error('different keys: ' .. j .. ' and ' .. k)
+					if v[j] == nil then
+						error('only left-hand has the key: ' .. j)
+					end
+					if u[k] == nil then
+						error('only right-hand has the key: ' .. k)
+					end
 				end
 				if not j then
 					break
