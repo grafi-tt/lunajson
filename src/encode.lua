@@ -4,6 +4,7 @@ local gsub = string.gsub
 local rawequal = rawequal
 local tostring = tostring
 local type = type
+local inf = 1/0
 
 local function encode(v, nullv)
 	local i = 1
@@ -45,6 +46,23 @@ local function encode(v, nullv)
 		end
 		visited[o] = true
 
+		local alen = o[0]
+		if type(alen) == 'number' then
+			builder[i] = '['
+			i = i+1
+			for j = 1, alen do
+				dodecode(o[j])
+				builder[i] = ','
+				i = i+1
+			end
+			if alen > 0 then
+				i = i-1
+			end
+			builder[i] = ']'
+			i = i+1
+			return
+		end
+
 		local v = o[1]
 		if v ~= nil then
 			builder[i] = '['
@@ -67,7 +85,7 @@ local function encode(v, nullv)
 
 		builder[i] = '{'
 		i = i+1
-		local j = i
+		local oldi = i
 		for k, v in pairs(o) do
 			if type(k) ~= 'string' then
 				error("non-string key")
@@ -79,7 +97,7 @@ local function encode(v, nullv)
 			builder[i] = ','
 			i = i+1
 		end
-		if i > j then
+		if i > oldi then
 			i = i-1
 		end
 		builder[i] = '}'
