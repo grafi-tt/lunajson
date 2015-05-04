@@ -1,7 +1,8 @@
 local byte = string.byte
-local format = string.format
 local find = string.find
+local format = string.format
 local gsub = string.gsub
+local match = string.match
 local rawequal = rawequal
 local tostring = tostring
 local type = type
@@ -16,8 +17,8 @@ local function encode(v, nullv)
 		i = i+1
 	end
 
-	local radixmark = find(tostring(0.5), '[^0-9]')
-	local delimmark = find(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
+	local radixmark = match(tostring(0.5), '[^0-9]')
+	local delimmark = match(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
 	if radixmark == '.' then
 		radixmark == nil
 	end

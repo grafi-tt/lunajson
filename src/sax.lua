@@ -4,6 +4,7 @@ local char = string.char
 local find = string.find
 local gsub = string.gsub
 local len = string.len
+local match = string.match
 local sub = string.sub
 local concat = table.concat
 local tonumber = tonumber
@@ -158,7 +159,7 @@ local function newparser(src, saxtbl)
 	end
 
 	-- parse numbers
-	local radixmark = find(tostring(0.5), '[^0-9]')
+	local radixmark = match(tostring(0.5), '[^0-9]')
 	local fixedtonumber = tonumber
 	if radixmark ~= '.' then
 		if find(radixmark, '%W') then
