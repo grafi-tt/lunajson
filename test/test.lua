@@ -1,3 +1,5 @@
+package.path = '../src/?.lua;' .. package.path
+
 local function isomorphic(u, v)
 	local s = type(u)
 	local t = type(v)
@@ -51,7 +53,11 @@ local decoders = {
 		end
 		return obj
 	end,
-	lunasax = require 'sax-decode'
+	lunasax = require 'sax-decode',
+	lunasimple = function(json, nv)
+		local dec = require 'lunajson.decode'
+		return dec(json, 1, nv)
+	end,
 }
 local nullv = function() end
 
@@ -65,3 +71,4 @@ for name, decode in pairs(decoders) do
 end
 
 isomorphic(results[1], results[2])
+isomorphic(results[1], results[3])

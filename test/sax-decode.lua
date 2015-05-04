@@ -1,5 +1,3 @@
-package.path = '../src/?.lua;' .. package.path
-
 local saxtbl = {}
 local current = {}
 local nullv
@@ -62,7 +60,7 @@ end
 
 return function(json, nv)
 	nullv = nv
-	local sax = require 'sax'
+	local lunajson = require 'lunajson'
 	local i = 1
 	local function gen()
 		local s = string.sub(json, i, i+8191)
@@ -72,6 +70,6 @@ return function(json, nv)
 		end
 		return s
 	end
-	sax.newparser(gen, saxtbl).run()
+	lunajson.newparser(gen, saxtbl).run()
 	return current[1]
 end
