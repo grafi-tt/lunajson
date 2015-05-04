@@ -20,11 +20,11 @@ local function encode(v, nullv)
 	local radixmark = match(tostring(0.5), '[^0-9]')
 	local delimmark = match(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
 	if radixmark == '.' then
-		radixmark == nil
+		radixmark = nil
 	end
 
 	local f_number = f_tostring
-	if radixmark or and delimmark then
+	if radixmark or delimmark then
 		if radixmark and find(radixmark, '%W') then
 			radixmark = '%' .. radixmark
 		end
@@ -34,7 +34,7 @@ local function encode(v, nullv)
 		f_number = function(n)
 			local s = tostring(n)
 			if delimmark then
-				s = gsub(s, delimmark, '', )
+				s = gsub(s, delimmark, '')
 			end
 			if radixmark then
 				s = gsub(s, radixmark, '.')
