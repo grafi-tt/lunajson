@@ -170,100 +170,47 @@ local function newparser(src, saxtbl)
 		end
 	end
 
-	local generic_number_automata = {
-		function (c)
-			if 0x30 < c and c < 0x3A then
-				return 2
-			elseif c == 0x30 then
-				return 3
-			else
-				return 0
-			end
-		end,
-		function (c)
-			if 0x30 <= c and c < 0x3A then
-				return 2
-			elseif c == 0x2E then
-				return 4
-			elseif c == 0x45 or c == 0x65 then
-				return 6
-			else
-				return 0
-			end
-		end,
-		function (c)
-			if 0x30 <= c and c < 0x3A then
-				return parseerror("digit after 0")
-			elseif c == 0x2E then
-				return 4
-			elseif c == 0x45 or c == 0x65 then
-				return parseerror("exponent after 0")
-			else
-				return 0
-			end
-		end,
-		function (c)
-			if 0x30 <= c and c < 0x3A then
-				return 5
-			else
-				return parseerror("fractional part after dot is not specified")
-			end
-		end,
-		function (c)
-			if 0x30 <= c and c < 0x3A then
-				return 5
-				-- nop
-			elseif c == 0x45 or c == 0x65 then
-				return 6
-			else
-				return 0
-			end
-		end,
-		function (c)
-			if c == 0x2B or c == 0x2D then
-				return 7
-			elseif 0x30 <= c and c < 0x3A then
-				return 8
-			else
-				return parseerror("exponent is not specified")
-			end
-		end,
-		function (c)
-			if 0x30 <= c and c < 0x3A then
-				return 8
-			else
-				return parseerror("exponent is not specified")
-			end
-		end,
-		function (c)
-			if 0x30 <= c and c < 0x3A then
-				return 8
-			else
-				return 0
-			end
-		end,
-	}
-
 	local function generic_number(mns)
-		local state = 1
-		local c
-		local chars = {}
-		local i = 0
+		local newpos
 
-		pos = pos-1
+		local str = ''
 		repeat
-			pos = pos+1
-			i = i+1
-			c = tellc()
-			chars[i] = c
-			state = generic_number_automata[state](c)
-		until state == 0
+			_, newpos = find(json, '^[-+0-9.eE]*', pos)
+			str = str .. sub(json, pos, newpos)
+			pos = newpos
+			if pos ~= jsonlen then
+				pos = pos+1
+				break
+			end
+			jsonnxt()
+		until jsonlen == 0
 
-		local num = fixedtonumber(concat(chars))
+		local c = byte(str)
+		if c == 0x30 then
+			_, newpos = find(str, '^%.[0-9]+', 2)
+		elseif 0x30 < c and c < 0x3A then
+			_, newpos = find(str, '^[0-9]*%.?[0-9]*', 2)
+			if byte(str, newpos) == 0x2E then
+				return parseerror('invalid number')
+			end
+		else
+			return parseerror('invalid number')
+		end
+
+		c = byte(str, newpos+1)
+		if expc == 0x45 or expc == 0x65 then
+			_, newpos = find(str, '^[+-]?[0-9]+', newpos+2)
+		end
+
+		if newpos ~= len(str) then
+			return parseerror('invalid number')
+		end
+		local num = fixedtonumber(str)
+		if mns then
+			num = -num
+		end
 		if sax_number then
 			return sax_number(num)
-		else
-			return
 		end
 	end
 
