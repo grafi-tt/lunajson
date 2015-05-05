@@ -1,3 +1,4 @@
+local floor = math.floor
 local pow = math.pow
 local byte = string.byte
 local char = string.char
@@ -21,8 +22,7 @@ else
 		return v % (mask+1)
 	end
 	rshift = function(v, len)
-		local w = pow(2, len)
-		return (v - v % w) / w
+		return floor(v / pow(2, len))
 	end
 end
 
@@ -138,9 +138,9 @@ local function decode(json, pos, nullv)
 					u8 = char(ucode)
 				elseif ucode < 0x800 then -- 2byte
 					u8 = char(0xC0 + rshift(ucode, 6), 0x80 + band(ucode, 0x3F))
-				elseif ucode < 0xD800 and 0xE00 <= ucode then -- 3byte
+				elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
 					u8 = char(0xE0 + rshift(ucode, 12), 0x80 + band(rshift(ucode, 6), 0x3F), 0x80 + band(ucode, 0x3F))
-				elseif 0xD800 <= ucode and ucode < 0xDC000 then -- surrogate pair 1st
+				elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
 					if f_str_surrogateprev == 0 then
 						f_str_surrogateprev = ucode
 						if l == 4 then
@@ -149,10 +149,10 @@ local function decode(json, pos, nullv)
 					end
 				else -- surrogate pair 2nd
 					if f_str_surrogateprev == 0 then
-						f_str_surrogateprev = 0x1234
+						f_str_surrogateprev = 1
 					else
+						ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
 						f_str_surrogateprev = 0
-						ucode = 0x100000 + band(f_str_surrogateprev, 0x03FF) * 0x400 + band(ucode, 0x03FF)
 						u8 = char(0xF0 + rshift(ucode, 18), 0x80 + band(rshift(ucode, 12), 0x3F), 0x80 + band(rshift(ucode, 6), 0x3F), 0x80 + band(ucode, 0x3F))
 					end
 				end
