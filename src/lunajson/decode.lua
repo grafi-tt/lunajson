@@ -186,13 +186,12 @@ local function decode(json, pos, nullv)
 		until byte(json, newpos) == 0x22
 
 		local str = sub(json, pos, newpos-1)
-		pos = newpos+1
-
 		if pos2 ~= pos then
 			f_str_surrogateprev = 0
 			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
 		end
 
+		pos = newpos+1
 		return str
 	end
 
