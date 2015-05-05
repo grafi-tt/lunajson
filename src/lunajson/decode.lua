@@ -27,6 +27,7 @@ else
 end
 
 local function decode(json, pos, nullv)
+	local _
 	local jsonlen = len(json)
 	local dodecode
 

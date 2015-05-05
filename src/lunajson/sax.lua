@@ -27,6 +27,7 @@ else
 end
 
 local function newparser(src, saxtbl)
+	local _
 	local json, jsonnxt
 	local jsonlen, pos, acc = 0, 1, 0
 
