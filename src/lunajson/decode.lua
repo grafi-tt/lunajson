@@ -75,36 +75,36 @@ local function decode(json, pos, nullv)
 		end
 	end
 
-	local function f_zro(mns, newpos)
-		newpos = newpos or pos
-		if byte(json, newpos) == 0x2E then
-			_, newpos = find(json, '^[0-9]+', newpos+1)
-			if not newpos then
-				return decodeerror('invalid number')
-			end
-			newpos = newpos+1
-		end
-		local expc = byte(json, newpos)
+	local function cont_number(mns, newpos)
+		local expc = byte(json, newpos+1)
 		if expc == 0x45 or expc == 0x65 then -- e or E?
-			_, newpos = find(json, '^[+-]?[0-9]+', newpos+1)
+			_, newpos = find(json, '^[+-]?[0-9]+', newpos+2)
 			if not newpos then
-				return decodeerror('invalid number')
+				decodeerror('invalid number')
 			end
-			newpos = newpos+1
 		end
-		local num = fixedtonumber(sub(json, pos-1, newpos-1))
+		local num = fixedtonumber(sub(json, pos-1, newpos))
 		if mns then
 			num = -num
 		end
-		pos = newpos
+		pos = newpos+1
 		return num
 	end
 
+	local function f_zro(mns)
+		local _, newpos = find(json, '^%.[0-9]+', pos)
+		if newpos then
+			return cont_number(mns, newpos)
+		end
+		return 0
+	end
+
 	local function f_num(mns)
-		local newpos = pos
-		_, newpos = find(json, '^[0-9]*', newpos)
-		newpos = newpos+1
-		return f_zro(mns, newpos)
+		local _, newpos = find(json, '^[0-9]*%.?[0-9]*', pos)
+		if byte(json, newpos) ~= 0x2E then -- check that num is not ended by comma
+			return cont_number(mns, newpos)
+		end
+		decodeerror('invalid number')
 	end
 
 	local function f_mns()

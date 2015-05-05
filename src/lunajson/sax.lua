@@ -238,7 +238,12 @@ local function newparser(src, saxtbl)
 
 	local function f_zro(mns)
 		local _, newpos = find(json, '^%.[0-9]+', pos)
-		return cont_number(mns, newpos)
+		if newpos then
+			return cont_number(mns, newpos)
+		end
+		if sax_number then
+			return sax_number(0)
+		end
 	end
 
 	local function f_num(mns)
