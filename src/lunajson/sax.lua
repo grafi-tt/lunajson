@@ -276,6 +276,17 @@ local function newparser(src, saxtbl)
 	-- parse strings
 	local f_str_surrogateprev
 
+	local f_str_tbl = {
+		['"']  = '"',
+		['\\'] = '\\',
+		['/']  = '/',
+		['b']  = '\b',
+		['f']  = '\f',
+		['n']  = '\n',
+		['r']  = '\r',
+		['t']  = '\t'
+	}
+
 	local function f_str_subst(ch, rest)
 		local u8
 		if ch == 'u' then
@@ -310,17 +321,7 @@ local function newparser(src, saxtbl)
 		if f_str_surrogateprev ~= 0 then
 			decodeerror("invalid surrogate pair")
 		end
-		local tbl = {
-			['"']  = '"',
-			['\\'] = '\\',
-			['/']  = '/',
-			['b']  = '\b',
-			['f']  = '\f',
-			['n']  = '\n',
-			['r']  = '\r',
-			['t']  = '\t'
-		}
-		return (u8 or tbl[ch] or decodeerror("invalid escape sequence")) .. rest
+		return (u8 or f_str_tbl[ch] or decodeerror("invalid escape sequence")) .. rest
 	end
 
 	local function f_str(iskey)
