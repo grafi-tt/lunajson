@@ -1,5 +1,3 @@
-local floor = math.floor
-local pow = math.pow
 local byte = string.byte
 local char = string.char
 local find = string.find
@@ -10,19 +8,14 @@ local sub = string.sub
 local concat = table.concat
 local tonumber = tonumber
 
-local band, bor, rshift
+local band, bor
 if _VERSION == 'Lua 5.2' then
 	band = bit32.band
-	rshift = bit32.rshift
 elseif type(bit) == 'table' then
 	band = bit.band
-	rshift = bit.rshift
 else
 	band = function(v, mask) -- mask must be 2^n-1
 		return v % (mask+1)
-	end
-	rshift = function(v, len)
-		return floor(v / pow(2, len))
 	end
 end
 
@@ -140,6 +133,9 @@ local function decode(json, pos, nullv)
 	}
 
 	local function f_str_subst(ch, rest)
+		-- 0.000003814697265625 = 2^-18
+		-- 0.000244140625 = 2^-12
+		-- 0.015625 = 2^-6
 		local u8
 		if ch == 'u' then
 			local l = len(rest)
@@ -149,9 +145,9 @@ local function decode(json, pos, nullv)
 				if ucode < 0x80 then -- 1byte
 					u8 = char(ucode)
 				elseif ucode < 0x800 then -- 2byte
-					u8 = char(0xC0 + rshift(ucode, 6), 0x80 + band(ucode, 0x3F))
+					u8 = char(0xC0 + ucode * 0.015625, 0x80 + band(ucode, 0x3F))
 				elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
-					u8 = char(0xE0 + rshift(ucode, 12), 0x80 + band(rshift(ucode, 6), 0x3F), 0x80 + band(ucode, 0x3F))
+					u8 = char(0xE0 + ucode * 0.000244140625, 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
 				elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
 					if f_str_surrogateprev == 0 then
 						f_str_surrogateprev = ucode
@@ -165,7 +161,7 @@ local function decode(json, pos, nullv)
 					else
 						ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
 						f_str_surrogateprev = 0
-						u8 = char(0xF0 + rshift(ucode, 18), 0x80 + band(rshift(ucode, 12), 0x3F), 0x80 + band(rshift(ucode, 6), 0x3F), 0x80 + band(ucode, 0x3F))
+						u8 = char(0xF0 + ucode * 0.000003814697265625, 0x80 + band(ucode * 0.000244140625, 0x3F), 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
 					end
 				end
 			end
