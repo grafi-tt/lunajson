@@ -139,9 +139,10 @@ local function decode(json, pos, nullv)
 		local u8
 		if ch == 'u' then
 			local l = len(rest)
-			if l >= 4 then
-				local ucode = tonumber(sub(rest, 1, 4), 16)
-				rest = sub(rest, 5, l)
+			local ucode = match(rest, '^[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]')
+			if ucode then
+				ucode = tonumber(ucode, 16)
+				rest = sub(rest, 5)
 				if ucode < 0x80 then -- 1byte
 					u8 = char(ucode)
 				elseif ucode < 0x800 then -- 2byte
@@ -164,6 +165,8 @@ local function decode(json, pos, nullv)
 						u8 = char(0xF0 + ucode * 0.000003814697265625, 0x80 + band(ucode * 0.000244140625, 0x3F), 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
 					end
 				end
+			else
+				decodeerror("invalid unicode charcode")
 			end
 		end
 		if f_str_surrogateprev ~= 0 then
