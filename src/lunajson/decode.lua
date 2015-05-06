@@ -199,13 +199,13 @@ local function decode(json, pos, nullv)
 	-- parse arrays
 	local function f_ary()
 		local ary = {}
-		local i = 0
 
 		_, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
 		if byte(json, pos) ~= 0x5D then
 			local newpos = pos-1
 
+			local i = 0
 			repeat
 				i = i+1
 				pos = newpos+1
