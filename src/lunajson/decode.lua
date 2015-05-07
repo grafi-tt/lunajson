@@ -140,39 +140,38 @@ local function decode(json, pos, nullv)
 		if ch == 'u' then
 			local l = len(rest)
 			local ucode = match(rest, '^[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]')
-			if ucode then
-				ucode = tonumber(ucode, 16)
-				rest = sub(rest, 5)
-				if ucode < 0x80 then -- 1byte
-					u8 = char(ucode)
-				elseif ucode < 0x800 then -- 2byte
-					u8 = char(0xC0 + ucode * 0.015625, 0x80 + band(ucode, 0x3F))
-				elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
-					u8 = char(0xE0 + ucode * 0.000244140625, 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
-				elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
-					if f_str_surrogateprev == 0 then
-						f_str_surrogateprev = ucode
-						if l == 4 then
-							return ''
-						end
-					end
-				else -- surrogate pair 2nd
-					if f_str_surrogateprev == 0 then
-						f_str_surrogateprev = 1
-					else
-						ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
-						f_str_surrogateprev = 0
-						u8 = char(0xF0 + ucode * 0.000003814697265625, 0x80 + band(ucode * 0.000244140625, 0x3F), 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
-					end
-				end
-			else
+			if not ucode then
 				decodeerror("invalid unicode charcode")
 			end
+			ucode = tonumber(ucode, 16)
+			rest = sub(rest, 5)
+			if ucode < 0x80 then -- 1byte
+				u8 = char(ucode)
+			elseif ucode < 0x800 then -- 2byte
+				u8 = char(0xC0 + ucode * 0.015625, 0x80 + band(ucode, 0x3F))
+			elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
+				u8 = char(0xE0 + ucode * 0.000244140625, 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
+			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
+				if f_str_surrogateprev == 0 then
+					f_str_surrogateprev = ucode
+					if l == 4 then
+						return ''
+					end
+				end
+			else -- surrogate pair 2nd
+				if f_str_surrogateprev == 0 then
+					f_str_surrogateprev = 1
+				else
+					ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
+					f_str_surrogateprev = 0
+					u8 = char(0xF0 + ucode * 0.000003814697265625, 0x80 + band(ucode * 0.000244140625, 0x3F), 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
+				end
+			end
 		end
-		if f_str_surrogateprev ~= 0 then
-			decodeerror("invalid surrogate pair")
+		if f_str_surrogateprev == 0 then
+			return (u8 or f_str_tbl[ch] or decodeerror("invalid escape sequence")) .. rest
 		end
-		return (u8 or f_str_tbl[ch] or decodeerror("invalid escape sequence")) .. rest
+		decodeerror("invalid surrogate pair")
 	end
 
 	local function f_str()
@@ -215,7 +214,7 @@ local function decode(json, pos, nullv)
 
 			_, newpos = find(json, '^[ \n\r\t]*%]', pos)
 			if not newpos then
-				return decodeerror("no closing bracket of an array")
+				decodeerror("no closing bracket of an array")
 			end
 			pos = newpos
 		end
@@ -236,13 +235,13 @@ local function decode(json, pos, nullv)
 			repeat
 				pos = newpos+1
 				if byte(json, pos) ~= 0x22 then
-					return decodeerror("not key")
+					decodeerror("not key")
 				end
 				pos = pos+1
 				local key = f_str()
 				_, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
 				if not newpos then
-					return decodeerror("no colon after a key")
+					decodeerror("no colon after a key")
 				end
 				pos = newpos+1
 				obj[key] = dodecode()
@@ -251,7 +250,7 @@ local function decode(json, pos, nullv)
 
 			_, newpos = find(json, '^[ \n\r\t]*}', pos)
 			if not newpos then
-				return decodeerror("no closing bracket of an object")
+				decodeerror("no closing bracket of an object")
 			end
 			pos = newpos
 		end

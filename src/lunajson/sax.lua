@@ -80,7 +80,7 @@ local function newparser(src, saxtbl)
 		if c then
 			return c
 		end
-		return parseerror("unexpected termination")
+		parseerror("unexpected termination")
 	end
 
 	local function spaces()
@@ -91,7 +91,7 @@ local function newparser(src, saxtbl)
 				return
 			end
 			if jsonlen == 0 then
-				return parseerror("unexpected termination")
+				parseerror("unexpected termination")
 			end
 			jsonnxt()
 		end
@@ -102,7 +102,7 @@ local function newparser(src, saxtbl)
 		for i = 1, targetlen do
 			local c = tellc()
 			if byte(target, i) ~= c then
-				return parseerror("invalid char")
+				parseerror("invalid char")
 			end
 			pos = pos+1
 		end
@@ -185,10 +185,10 @@ local function newparser(src, saxtbl)
 		elseif 0x30 < c and c < 0x3A then
 			_, newpos = find(str, '^[0-9]*%.?[0-9]*', 2)
 			if byte(str, newpos) == 0x2E then
-				return parseerror('invalid number')
+				parseerror('invalid number')
 			end
 		else
-			return parseerror('invalid number')
+			parseerror('invalid number')
 		end
 
 		c = byte(str, newpos+1)
@@ -197,7 +197,7 @@ local function newparser(src, saxtbl)
 		end
 
 		if newpos ~= len(str) then
-			return parseerror('invalid number')
+			parseerror('invalid number')
 		end
 		local num = fixedtonumber(str)
 		if mns then
@@ -285,39 +285,38 @@ local function newparser(src, saxtbl)
 		if ch == 'u' then
 			local l = len(rest)
 			local ucode = match(rest, '^[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]')
-			if ucode then
-				ucode = tonumber(ucode, 16)
-				rest = sub(rest, 5)
-				if ucode < 0x80 then -- 1byte
-					u8 = char(ucode)
-				elseif ucode < 0x800 then -- 2byte
-					u8 = char(0xC0 + ucode * 0.015625, 0x80 + band(ucode, 0x3F))
-				elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
-					u8 = char(0xE0 + ucode * 0.000244140625, 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
-				elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
-					if f_str_surrogateprev == 0 then
-						f_str_surrogateprev = ucode
-						if l == 4 then
-							return ''
-						end
-					end
-				else -- surrogate pair 2nd
-					if f_str_surrogateprev == 0 then
-						f_str_surrogateprev = 1
-					else
-						ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
-						f_str_surrogateprev = 0
-						u8 = char(0xF0 + ucode * 0.000003814697265625, 0x80 + band(ucode * 0.000244140625, 0x3F), 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
-					end
-				end
-			else
+			if not ucode then
 				parseerror("invalid unicode charcode")
 			end
+			ucode = tonumber(ucode, 16)
+			rest = sub(rest, 5)
+			if ucode < 0x80 then -- 1byte
+				u8 = char(ucode)
+			elseif ucode < 0x800 then -- 2byte
+				u8 = char(0xC0 + ucode * 0.015625, 0x80 + band(ucode, 0x3F))
+			elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
+				u8 = char(0xE0 + ucode * 0.000244140625, 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
+			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
+				if f_str_surrogateprev == 0 then
+					f_str_surrogateprev = ucode
+					if l == 4 then
+						return ''
+					end
+				end
+			else -- surrogate pair 2nd
+				if f_str_surrogateprev == 0 then
+					f_str_surrogateprev = 1
+				else
+					ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
+					f_str_surrogateprev = 0
+					u8 = char(0xF0 + ucode * 0.000003814697265625, 0x80 + band(ucode * 0.000244140625, 0x3F), 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
+				end
+			end
 		end
-		if f_str_surrogateprev ~= 0 then
-			parseerror("invalid surrogate pair")
+		if f_str_surrogateprev == 0 then
+			return (u8 or f_str_tbl[ch] or parseerror("invalid escape sequence")) .. rest
 		end
-		return (u8 or f_str_tbl[ch] or parseerror("invalid escape sequence")) .. rest
+		parseerror("invalid surrogate pair")
 	end
 
 	local function f_str(iskey)
@@ -394,7 +393,7 @@ local function newparser(src, saxtbl)
 					elseif c == 0x5D then
 						break
 					else
-						return parseerror("no closing bracket of an array")
+						parseerror("no closing bracket of an array")
 					end
 				end
 				pos = newpos+1
@@ -419,7 +418,7 @@ local function newparser(src, saxtbl)
 			local newpos
 			while true do
 				if byte(json, pos) ~= 0x22 then
-					return parseerror("not key")
+					parseerror("not key")
 				end
 				pos = pos+1
 				f_str(true)
@@ -427,7 +426,7 @@ local function newparser(src, saxtbl)
 				if not newpos then
 					spaces()
 					if byte(json, pos) ~= 0x3A then
-						return parseerror("no colon after a key")
+						parseerror("no colon after a key")
 					end
 					pos = pos+1
 					spaces()
@@ -454,7 +453,7 @@ local function newparser(src, saxtbl)
 					elseif c == 0x7D then
 						break
 					else
-						return parseerror("no closing bracket of an object")
+						parseerror("no closing bracket of an object")
 					end
 				end
 				pos = newpos+1
@@ -504,12 +503,11 @@ local function newparser(src, saxtbl)
 		pos = pos+n
 		while pos > jsonlen+1 do
 			jsonnxt()
-			if json then
-				pos = pos-jsonlen
-				jsonlen = len(json)
-			else
-				return parseerror("unexpected termination")
+			if not json then
+				parseerror("unexpected termination")
 			end
+			pos = pos-jsonlen
+			jsonlen = len(json)
 			jsonlen = len(json)
 		end
 	end
@@ -518,12 +516,11 @@ local function newparser(src, saxtbl)
 		local pos2 = pos+n
 		while pos > jsonlen do
 			json = jsonnxt()
-			if json then
-				pos = pos-jsonlen
-				jsonlen = len(json)
-			else
+			if not json then
 				return parseerror("unexpected termination")
 			end
+			pos = pos-jsonlen
+			jsonlen = len(json)
 			jsonlen = len(json)
 		end
 	end
