@@ -84,7 +84,7 @@ local function newparser(src, saxtbl)
 	end
 
 	local function spaces()
-		repeat
+		while true do
 			_, pos = find(json, '^[ \n\r\t]*', pos)
 			if pos ~= jsonlen then
 				pos = pos+1
@@ -94,7 +94,7 @@ local function newparser(src, saxtbl)
 				return parseerror("unexpected termination")
 			end
 			jsonnxt()
-		until false
+		end
 	end
 
 	-- parse constants
@@ -325,8 +325,8 @@ local function newparser(src, saxtbl)
 		local newpos
 		local str = ''
 		local bs
-		repeat
-			repeat
+		while true do
+			while true do
 				newpos = find(json, '[\\"]', pos2)
 				if newpos then
 					break
@@ -338,13 +338,13 @@ local function newparser(src, saxtbl)
 					pos2 = 1
 				end
 				jsonnxt()
-			until false
+			end
 			if byte(json, newpos) == 0x22 then
 				break
 			end
 			pos2 = newpos+2
 			bs = true
-		until false
+		end
 		str = str .. sub(json, pos, newpos-1)
 		pos = newpos+1
 
@@ -376,7 +376,7 @@ local function newparser(src, saxtbl)
 		spaces()
 		if byte(json, pos) ~= 0x5D then
 			local newpos
-			repeat
+			while true do
 				doparse()
 				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 				if not newpos then
@@ -401,7 +401,7 @@ local function newparser(src, saxtbl)
 				if pos > jsonlen then
 					spaces()
 				end
-			until false
+			end
 		end
 		pos = pos+1
 		if sax_endarray then
@@ -417,7 +417,7 @@ local function newparser(src, saxtbl)
 		spaces()
 		if byte(json, pos) ~= 0x7D then
 			local newpos
-			repeat
+			while true do
 				if byte(json, pos) ~= 0x22 then
 					return parseerror("not key")
 				end
@@ -461,7 +461,7 @@ local function newparser(src, saxtbl)
 				if pos > jsonlen then
 					spaces()
 				end
-			until false
+			end
 		end
 		pos = pos+1
 		if sax_endobject then
