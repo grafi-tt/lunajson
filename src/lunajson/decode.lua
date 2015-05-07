@@ -65,7 +65,7 @@ local function decode(json, pos, nullv)
 			radixmark = '%' .. radixmark
 		end
 		fixedtonumber = function(s)
-			return tonumber(gsub(s, radixmark, ''))
+			return tonumber(gsub(s, '.', radixmark))
 		end
 	end
 

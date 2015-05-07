@@ -160,7 +160,7 @@ local function newparser(src, saxtbl)
 			radixmark = '%' .. radixmark
 		end
 		fixedtonumber = function(s)
-			return tonumber(gsub(s, radixmark, ''))
+			return tonumber(gsub(s, '.', radixmark))
 		end
 	end
 
