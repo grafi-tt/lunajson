@@ -267,7 +267,7 @@ local function newparser(src, saxtbl)
 	end
 
 	-- parse strings
-	local f_str_surrogateprev
+	local f_str_surrogateprev = 0
 
 	local f_str_tbl = {
 		['"']  = '"',
@@ -313,10 +313,10 @@ local function newparser(src, saxtbl)
 				end
 			end
 		end
-		if f_str_surrogateprev == 0 then
-			return (u8 or f_str_tbl[ch] or parseerror("invalid escape sequence")) .. rest
+		if f_str_surrogateprev ~= 0 then
+			parseerror("invalid surrogate pair")
 		end
-		parseerror("invalid surrogate pair")
+		return (u8 or f_str_tbl[ch] or parseerror("invalid escape sequence")) .. rest
 	end
 
 	local function f_str(iskey)
@@ -348,8 +348,10 @@ local function newparser(src, saxtbl)
 		pos = newpos+1
 
 		if bs then
-			f_str_surrogateprev = 0
 			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
+			if f_str_surrogateprev ~= 0 then
+				decodeerror("invalid surrogate pair")
+			end
 		end
 
 		if iskey then

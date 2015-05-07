@@ -119,7 +119,7 @@ local function decode(json, pos, nullv)
 	end
 
 	-- parse strings
-	local f_str_surrogateprev
+	local f_str_surrogateprev = 0
 
 	local f_str_tbl = {
 		['"']  = '"',
@@ -168,10 +168,10 @@ local function decode(json, pos, nullv)
 				end
 			end
 		end
-		if f_str_surrogateprev == 0 then
-			return (u8 or f_str_tbl[ch] or decodeerror("invalid escape sequence")) .. rest
+		if f_str_surrogateprev ~= 0 then
+			decodeerror("invalid surrogate pair")
 		end
-		decodeerror("invalid surrogate pair")
+		return (u8 or f_str_tbl[ch] or decodeerror("invalid escape sequence")) .. rest
 	end
 
 	local function f_str()
@@ -187,8 +187,10 @@ local function decode(json, pos, nullv)
 
 		local str = sub(json, pos, newpos-1)
 		if pos2 ~= pos then
-			f_str_surrogateprev = 0
 			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
+			if f_str_surrogateprev ~= 0 then
+				decodeerror("invalid surrogate pair")
+			end
 		end
 
 		pos = newpos+1
