@@ -154,7 +154,7 @@ local function decode(json, pos, nullv)
 			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
 				if f_str_surrogateprev == 0 then
 					f_str_surrogateprev = ucode
-					if l == 4 then
+					if rest == '' then
 						return ''
 					end
 				end
