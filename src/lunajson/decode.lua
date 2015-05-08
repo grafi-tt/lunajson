@@ -154,7 +154,7 @@ local function decode(json, pos, nullv)
 				else
 					ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
 					f_str_surrogateprev = 0
-					u8 = char(0xF0 + floor(ucode * 0.000003814697265625), 0x80 + floor(ucode * 0.000244140625) % 0x40, 0x80 + ucode * 0.015625 % 0x40, 0x80 + ucode % 0x40)
+					u8 = char(0xF0 + floor(ucode * 0.000003814697265625), 0x80 + floor(ucode * 0.000244140625) % 0x40, 0x80 + floor(ucode * 0.015625) % 0x40, 0x80 + ucode % 0x40)
 				end
 			end
 		end
