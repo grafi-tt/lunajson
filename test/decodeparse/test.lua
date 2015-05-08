@@ -75,7 +75,20 @@ tasks = {
 		if not iserr then
 			origerror("not errored")
 		end
-	end
+	end,
+	bench = function()
+		local acc = 0
+		for i = 1, 10 do
+			local decode = dofile(decoderfile)
+			local t1 = os.clock()
+			decode(json, nullv)
+			local t2 = os.clock()
+			local t = t2-t1
+			print(string.format("%2d: %.03fsec", i, t))
+			acc = acc+t
+		end
+		print(string.format("avg: %.03fsec", acc/10))
+	end,
 }
 
 tasks[task]()
