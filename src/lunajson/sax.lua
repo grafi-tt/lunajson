@@ -6,18 +6,8 @@ local len = string.len
 local match = string.match
 local sub = string.sub
 local concat = table.concat
+local floor = math.floor
 local tonumber = tonumber
-
-local band, bor
-if _VERSION == 'Lua 5.2' then
-	band = bit32.band
-elseif type(bit) == 'table' then
-	band = bit.band
-else
-	band = function(v, mask) -- mask must be 2^n-1
-		return v % (mask+1)
-	end
-end
 
 local function newparser(src, saxtbl)
 	local _
@@ -281,6 +271,9 @@ local function newparser(src, saxtbl)
 	}
 
 	local function f_str_subst(ch, rest)
+		-- 0.000003814697265625 = 2^-18
+		-- 0.000244140625 = 2^-12
+		-- 0.015625 = 2^-6
 		local u8
 		if ch == 'u' then
 			local l = len(rest)
@@ -293,9 +286,9 @@ local function newparser(src, saxtbl)
 			if ucode < 0x80 then -- 1byte
 				u8 = char(ucode)
 			elseif ucode < 0x800 then -- 2byte
-				u8 = char(0xC0 + ucode * 0.015625, 0x80 + band(ucode, 0x3F))
+				u8 = char(0xC0 + floor(ucode * 0.015625) % 0x10000, 0x80 + ucode % 0x40)
 			elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
-				u8 = char(0xE0 + ucode * 0.000244140625, 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
+				u8 = char(0xE0 + floor(ucode * 0.000244140625) % 0x10000, 0x80 + floor(ucode * 0.015625) % 0x40, 0x80 + ucode % 0x40)
 			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
 				if f_str_surrogateprev == 0 then
 					f_str_surrogateprev = ucode
@@ -309,7 +302,7 @@ local function newparser(src, saxtbl)
 				else
 					ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
 					f_str_surrogateprev = 0
-					u8 = char(0xF0 + ucode * 0.000003814697265625, 0x80 + band(ucode * 0.000244140625, 0x3F), 0x80 + band(ucode * 0.015625, 0x3F), 0x80 + band(ucode, 0x3F))
+					u8 = char(0xF0 + floor(ucode * 0.000003814697265625), 0x80 + floor(ucode * 0.000244140625) % 0x40, 0x80 + ucode * 0.015625 % 0x40, 0x80 + ucode % 0x40)
 				end
 			end
 		end
@@ -350,7 +343,7 @@ local function newparser(src, saxtbl)
 		if bs then
 			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
 			if f_str_surrogateprev ~= 0 then
-				decodeerror("invalid surrogate pair")
+				parseerror("invalid surrogate pair")
 			end
 		end
 
