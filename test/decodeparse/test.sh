@@ -15,6 +15,20 @@ for l in *-decoder.lua; do
 	done
 done
 
+echo "# invalid"
+for l in *-decoder.lua; do
+	echo "## $l"
+	for j in invalidjson/*.json; do
+		echo "### ${j}"
+		echo "#### lua51"
+		eval "${lua51}" test.lua invalid "${l}" "${j}"
+		echo "#### lua52"
+		eval "${lua52}" test.lua invalid "${l}" "${j}"
+		echo "#### luajit"
+		eval "${luajit}" test.lua invalid "${l}" "${j}"
+	done
+done
+
 cd benchjson
 for r in *.rb; do
 	ruby "${r}" > "${r%.rb}.json"

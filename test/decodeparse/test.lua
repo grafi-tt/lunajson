@@ -8,7 +8,6 @@ local jfp = io.open(jsonfile)
 local json = jfp:read('*a')
 jfp:close()
 
-local decode = dofile(decoderfile)
 local nullv = 1/0
 
 local function isomorphic(u, v)
@@ -56,12 +55,26 @@ end
 
 tasks = {
 	valid = function()
+		local decode = dofile(decoderfile)
 		local answerfile = string.gsub(jsonfile, '%.json$', '.lua')
 		local lfp = io.open(answerfile)
 		local ans = dofile(answerfile)
 		lfp:close()
 		local v = decode(json, nullv)
 		isomorphic(ans, v)
+	end,
+	invalid = function()
+		local iserr
+		local origerror = error
+		error = function()
+			iserr = true
+			origerror()
+		end
+		local decode = dofile(decoderfile)
+		pcall(decode, json, nullv)
+		if not iserr then
+			origerror("not errored")
+		end
 	end
 }
 
