@@ -14,19 +14,22 @@ local function dump(v)
 	local depth8 = 1
 	local view = 1
 	local usestack
-	local vars = {'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8'}
+	local vars = {'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v1'}
 	local vars2 = {'v1[', 'v2[', 'v3[', 'v4[', 'v5[', 'v6[', 'v7[', 'v8['}
 	local var = 'v1'
+	local nextvar = 'v2'
 	local var2 = 'v1['
+	local nextvar2 = 'v2['
 
 	local function incdepth()
 		depth = depth+1
 		if depth > 1 then
 			depth8 = depth8+1
 			if depth8 > 8 then
-				depth8 = 1
+				depth8 = 0
 			end
-			var = vars[depth8]
+			var = nextvar
+			nextvar = vars[depth8+1]
 			var2 = vars2[depth8]
 			if depth >= view+8 then
 				usestack = true
@@ -48,7 +51,9 @@ local function dump(v)
 			if depth8 < 1 then
 				depth8 = 8
 			end
+			nextvar = var
 			var = vars[depth8]
+			nextvar2 = var2
 			var2 = vars2[depth8]
 			if depth < view then
 				view = view-1
@@ -65,7 +70,7 @@ local function dump(v)
 
 	local tablefun, tbl
 
-	local function tableelem(k, v, kt)
+	local function tableelem(k, v)
 		do
 			local vt = type(v)
 			if vt ~= 'table' then
@@ -80,42 +85,46 @@ local function dump(v)
 			end
 		end
 		do
-			local olddepth = visited[o]
+			local olddepth = visited[v]
 			if olddepth then
-				builder[i] = var
-				builder[i+1] = '='
+				builder[i] = var2
+				builder[i+1] = k
+				builder[i+2] = ']='
 				if olddepth >= view then
-					builder[i+2] = vars[olddepth%8]
+					builder[i+3] = vars[olddepth%8]
 				else
-					builder[i+2] = 'stack['..olddepth..']'
+					builder[i+3] = 'stack['..olddepth..']'
 				end
-				builder[i+3] = '\n'
-				i = i+4
+				builder[i+4] = '\n'
+				i = i+5
 				return
 			end
 		end
-		if kt == 'table' then
-			builder[i] = 'vtmp={}\n'
-			builder[i+1] = var2
-			builder[i+2] = k
-			builder[i+3] = ']=vtmp\n'
-			incdepth()
-			builder[i+4] = var
-			builder[i+5] = '=vtmp\n'
-			i = i+6
-		else
+		do
 			local oldvar2 = var2
 			incdepth()
-			builder[i] = var
-			builder[i+1] = '={}\n'
-			builder[i+2] = oldvar2
-			builder[i+3] = k
-			builder[i+4] = ']='
-			builder[i+5] = var
-			builder[i+6] = '\n'
-			i = i+7
+			visited[v] = depth
+			if kt == nextvar then
+				builder[i] = 'vtmp={}\n'
+				builder[i+1] = oldvar2
+				builder[i+2] = k
+				builder[i+3] = ']=vtmp\n'
+				builder[i+4] = var
+				builder[i+5] = '=vtmp\n'
+				i = i+6
+			else
+				builder[i] = var
+				builder[i+1] = '={}\n'
+				builder[i+2] = oldvar2
+				builder[i+3] = k
+				builder[i+4] = ']='
+				builder[i+5] = var
+				builder[i+6] = '\n'
+				i = i+7
+			end
 		end
 		tablefun(v)
+		visited[v] = nil
 		decdepth()
 	end
 
@@ -123,14 +132,13 @@ local function dump(v)
 		local l = 0
 		for j, v in ipairs(o) do
 			l = j
-			tableelem(j, v, 'number')
+			tableelem(j, v)
 		end
 		for k, v in pairs(o) do
 			local kt = type(k)
 			if kt ~= 'number' or  k < 1 or k > l then
-				local kt = type(k)
 				k = tbl[kt](k)
-				tableelem(k, v, kt)
+				tableelem(k, v)
 			end
 		end
 	end
@@ -154,10 +162,9 @@ local function dump(v)
 			builder[i+1] = '={}\n'
 			i = i+2
 			tablefun(o)
-			local oldvar = var
 			visited[o] = nil
 			decdepth()
-			return oldvar
+			return nextvar
 		end,
 		string = function(s)
 			return format('%q', s)
