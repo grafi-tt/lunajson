@@ -1,0 +1,3 @@
+lua51="LUA_CPATH=~/lua-5.1.5/lpeg-0.12.2/?.so ~/lua-5.1.5/src/lua"
+lua52="LUA_CPATH=~/lua-5.2.4/lpeg-0.12.2/?.so ~/lua-5.2.4/src/lua"
+luajit="LUA_CPATH=~/LuaJIT-2.0.3/lpeg-0.12.2/?.so ~/LuaJIT-2.0.3/src/luajit"

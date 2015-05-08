@@ -1,0 +1,5 @@
+= sample.json
+from https://code.google.com/p/json-simple/downloads/detail?name=json_simple.zip
+
+= surrogate.json
+「𠆢」(u201A2). I choosed this character because this is included in M+ font, my favorite and daily Japanese font :)

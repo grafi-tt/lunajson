@@ -1,0 +1,1 @@
+package.path='../../src/?.lua;/home/foo/dkjson/?.lua;' .. package.path
