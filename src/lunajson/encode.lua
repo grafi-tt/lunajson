@@ -152,12 +152,12 @@ local function encode(v, nullv)
 	setmetatable(dispatcher, dispatcher)
 
 	function dodecode(v)
-		if rawequal(v, nullv) then
+		if v == nullv then
 			builder[i] = 'null'
 			i = i+1
 			return
 		end
-		dispatcher[type(v)](v)
+		return dispatcher[type(v)](v)
 	end
 
 	-- exec
