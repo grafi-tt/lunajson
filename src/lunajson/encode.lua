@@ -59,7 +59,7 @@ local function encode(v, nullv)
 		['\r'] = '\\r',
 		['\t'] = '\\t',
 		__index = function(_, c)
-			return format('\\u00%02X', tostring(byte(c)))
+			return format('\\u00%02X', byte(c))
 		end
 	}
 	setmetatable(f_string_subst, f_string_subst)
