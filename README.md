@@ -68,7 +68,7 @@ Return current position.
 Return the byte of current position as a number. If input is ended, it returns `nil`. It does not change current position.
 
 #### parsercontext.read(n)
-Return the `n`-length starting from current position, and increase the index by `n`. If the input ends, the returned string and the updated position will be truncated.
+Return the `n`-length string starting from current position, and increase the index by `n`. If the input ends, the returned string and the updated position will be truncated.
 
 ## Benchmark
 To be appeared.
