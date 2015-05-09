@@ -5,6 +5,7 @@ local gsub = string.gsub
 local match = string.match
 local rawequal = rawequal
 local tostring = tostring
+local pairs = pairs
 local type = type
 
 local function encode(v, nullv)
@@ -17,30 +18,36 @@ local function encode(v, nullv)
 		i = i+1
 	end
 
-	local radixmark = match(tostring(0.5), '[^0-9]')
-	local delimmark = match(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
-	if radixmark == '.' then
-		radixmark = nil
+	local f_number = function(n)
+		builder[i] = format("%.17g", n)
+		i = i+1
 	end
 
-	local f_number = f_tostring
-	if radixmark or delimmark then
-		if radixmark and find(radixmark, '%W') then
-			radixmark = '%' .. radixmark
+	do
+		local radixmark = match(tostring(0.5), '[^0-9]')
+		local delimmark = match(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
+		if radixmark == '.' then
+			radixmark = nil
 		end
-		if delimmark and find(selimmark, '%W') then
-			delimmark = '%' .. delimmark
-		end
-		f_number = function(n)
-			local s = tostring(n)
-			if delimmark then
-				s = gsub(s, delimmark, '')
+
+		if radixmark or delimmark then
+			if radixmark and find(radixmark, '%W') then
+				radixmark = '%' .. radixmark
 			end
-			if radixmark then
-				s = gsub(s, radixmark, '.')
+			if delimmark and find(selimmark, '%W') then
+				delimmark = '%' .. delimmark
 			end
-			builder[i] = s
-			i = i+1
+			f_number = function(n)
+				local s = format("%.17g", n)
+				if delimmark then
+					s = gsub(s, delimmark, '')
+				end
+				if radixmark then
+					s = gsub(s, radixmark, '.')
+				end
+				builder[i] = s
+				i = i+1
+			end
 		end
 	end
 
