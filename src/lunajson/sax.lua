@@ -183,6 +183,9 @@ local function newparser(src, saxtbl)
 		local c = byte(str)
 		if c == 0x30 then
 			_, newpos = find(str, '^%.[0-9]+', 2)
+			if not newpos then
+				newpos = 1
+			end
 		elseif 0x30 < c and c < 0x3A then
 			_, newpos = find(str, '^[0-9]*%.?[0-9]*', 2)
 			if byte(str, newpos) == 0x2E then
@@ -232,13 +235,14 @@ local function newparser(src, saxtbl)
 	end
 
 	local function f_zro(mns)
-		local _, newpos = find(json, '^%.[0-9]+', pos)
+		if byte(json, pos) ~= 0x2E then
+			return cont_number(mns, pos-1)
+		end
+		local _, newpos = find(json, '^[0-9]+', pos+1)
 		if newpos then
 			return cont_number(mns, newpos)
 		end
-		if sax_number then
-			return sax_number(0)
-		end
+		return generic_number(mns)
 	end
 
 	local function f_num(mns)
@@ -246,7 +250,6 @@ local function newparser(src, saxtbl)
 		if byte(json, newpos) ~= 0x2E then -- check that num is not ended by comma
 			return cont_number(mns, newpos)
 		end
-		pos = pos-1
 		return generic_number(mns)
 	end
 

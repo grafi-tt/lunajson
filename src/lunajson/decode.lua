@@ -84,11 +84,14 @@ local function decode(json, pos, nullv, arraylen)
 	end
 
 	local function f_zro(mns)
-		local _, newpos = find(json, '^%.[0-9]+', pos)
+		if byte(json, pos) ~= 0x2E then
+			return cont_number(mns, pos-1)
+		end
+		local _, newpos = find(json, '^[0-9]+', pos+1)
 		if newpos then
 			return cont_number(mns, newpos)
 		end
-		return 0.0
+		decodeerror('invalid number')
 	end
 
 	local function f_num(mns)
