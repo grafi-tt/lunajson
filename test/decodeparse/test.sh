@@ -1,5 +1,5 @@
 #!/bin/sh
-source ./luabin.sh
+source ../luabin.sh
 
 echo "# valid"
 for l in *-decoder.lua; do

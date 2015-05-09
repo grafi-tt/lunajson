@@ -1,14 +1,10 @@
 dofile('../luapath.lua')
 
 local task = arg[1]
-local decoderfile = arg[2]
-local jsonfile = arg[3]
+local encoderfile = arg[2]
+local datafile = arg[3]
 
-local jfp = io.open(jsonfile)
-local json = jfp:read('*a')
-jfp:close()
-
-local nullv = 1/0
+local data = dofile(datafile)
 
 local function isomorphic(u, v)
 	local s = type(u)
@@ -55,13 +51,10 @@ end
 
 tasks = {
 	valid = function()
-		local decode = dofile(decoderfile)
-		local answerfile = string.gsub(jsonfile, '%.json$', '.lua')
-		local lfp = io.open(answerfile)
-		local ans = dofile(answerfile)
-		lfp:close()
-		local v = decode(json, nullv)
-		isomorphic(ans, v)
+		local encode, decode = dofile(encoderfile)
+		local j = encode(data)
+		local v = decode(j)
+		isomorphic(data, v)
 	end,
 	invalid = function()
 		local iserr
@@ -70,18 +63,19 @@ tasks = {
 			iserr = true
 			origerror()
 		end
-		local decode = dofile(decoderfile)
-		pcall(decode, json, nullv)
+		local encode = dofile(encoderfile)
+		pcall(encode, data)
+		error = origerror
 		if not iserr then
-			origerror("not errored")
+			error("not errored")
 		end
 	end,
 	bench = function()
 		local acc = 0
 		for i = 1, 10 do
-			local decode = dofile(decoderfile)
+			local encode = dofile(encoderfile)
 			local t1 = os.clock()
-			decode(json, nullv)
+			encode(data)
 			local t2 = os.clock()
 			local t = t2-t1
 			print(string.format("%2d: %.03fsec", i, t))
