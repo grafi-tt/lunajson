@@ -8,7 +8,7 @@ description = {
 	summary = "A strict, flexible and very fast JSON parser/decoder/encoder written in pure Lua",
 	detailed = [[
 		Lunajson features SAX-style JSON parser and simple JSON decoder/encoder. It is tested on Lua 5.1, Lua 5.2, Lua 5.3, and LuaJIT.
-		It is written only in pure Lua and has no dependencies. Even though, since it is carefully optimized, its speed even matches to other lpeg-based JSON modules.
+		It is written only in pure Lua and has no dependencies. Even though, since it is carefully optimized, decoding speed even matches to other lpeg-based JSON modules.
 		The parser and decoder reject inputs not conforms the JSON specification (ECMA-404), and the encoder always yields outputs conforming the specification.
 		The parser and decoder also handle surrogate pair correctly.
 	]],
