@@ -2,16 +2,19 @@ local byte = string.byte
 local char = string.char
 local find = string.find
 local gsub = string.gsub
-local len = string.len
 local match = string.match
 local sub = string.sub
-local concat = table.concat
-local floor = math.floor
 local tonumber = tonumber
+
+local genstrlib
+if _VERSION == "Lua 5.3" then
+	genstrlib = require 'lunajson._str_lib_lua53'
+else
+	genstrlib = require 'lunajson._str_lib'
+end
 
 local function decode(json, pos, nullv, arraylen)
 	local _
-	local jsonlen = len(json)
 	local dodecode
 
 	-- helper
@@ -67,7 +70,7 @@ local function decode(json, pos, nullv, arraylen)
 				decodeerror('invalid number')
 			end
 		end
-		local num = fixedtonumber(sub(json, pos-1, newpos))
+		local num = fixedtonumber(sub(json, pos-1, newpos)) - 0.0
 		if mns then
 			num = -num
 		end
@@ -80,7 +83,7 @@ local function decode(json, pos, nullv, arraylen)
 		if newpos then
 			return cont_number(mns, newpos)
 		end
-		return 0
+		return 0.0
 	end
 
 	local function f_num(mns)
@@ -109,60 +112,9 @@ local function decode(json, pos, nullv, arraylen)
 	end
 
 	-- parse strings
-	local f_str_surrogateprev = 0
-
-	local f_str_tbl = {
-		['"']  = '"',
-		['\\'] = '\\',
-		['/']  = '/',
-		['b']  = '\b',
-		['f']  = '\f',
-		['n']  = '\n',
-		['r']  = '\r',
-		['t']  = '\t'
-	}
-
-	local function f_str_subst(ch, rest)
-		-- 0.000003814697265625 = 2^-18
-		-- 0.000244140625 = 2^-12
-		-- 0.015625 = 2^-6
-		local u8
-		if ch == 'u' then
-			local l = len(rest)
-			local ucode = match(rest, '^[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]')
-			if not ucode then
-				decodeerror("invalid unicode charcode")
-			end
-			ucode = tonumber(ucode, 16)
-			rest = sub(rest, 5)
-			if ucode < 0x80 then -- 1byte
-				u8 = char(ucode)
-			elseif ucode < 0x800 then -- 2byte
-				u8 = char(0xC0 + floor(ucode * 0.015625) % 0x10000, 0x80 + ucode % 0x40)
-			elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
-				u8 = char(0xE0 + floor(ucode * 0.000244140625) % 0x10000, 0x80 + floor(ucode * 0.015625) % 0x40, 0x80 + ucode % 0x40)
-			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
-				if f_str_surrogateprev == 0 then
-					f_str_surrogateprev = ucode
-					if rest == '' then
-						return ''
-					end
-				end
-			else -- surrogate pair 2nd
-				if f_str_surrogateprev == 0 then
-					f_str_surrogateprev = 1
-				else
-					ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
-					f_str_surrogateprev = 0
-					u8 = char(0xF0 + floor(ucode * 0.000003814697265625), 0x80 + floor(ucode * 0.000244140625) % 0x40, 0x80 + floor(ucode * 0.015625) % 0x40, 0x80 + ucode % 0x40)
-				end
-			end
-		end
-		if f_str_surrogateprev ~= 0 then
-			decodeerror("invalid surrogate pair")
-		end
-		return (u8 or f_str_tbl[ch] or decodeerror("invalid escape sequence")) .. rest
-	end
+	local f_str_lib = genstrlib(decodeerror)
+	local f_str_surrogateok = f_str_lib.surrogateok
+	local f_str_subst = f_str_lib.subst
 
 	local function f_str()
 		local newpos = pos-2
@@ -178,7 +130,7 @@ local function decode(json, pos, nullv, arraylen)
 		local str = sub(json, pos, newpos-1)
 		if pos2 ~= pos then
 			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
-			if f_str_surrogateprev ~= 0 then
+			if not f_str_surrogateok() then
 				decodeerror("invalid surrogate pair")
 			end
 		end

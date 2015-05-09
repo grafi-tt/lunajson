@@ -5,9 +5,15 @@ local gsub = string.gsub
 local len = string.len
 local match = string.match
 local sub = string.sub
-local concat = table.concat
 local floor = math.floor
 local tonumber = tonumber
+
+local genstrlib
+if _VERSION == "Lua 5.3" then
+	genstrlib = require 'lunajson._str_lib_lua53'
+else
+	genstrlib = require 'lunajson._str_lib'
+end
 
 local function newparser(src, saxtbl)
 	local _
@@ -257,60 +263,9 @@ local function newparser(src, saxtbl)
 	end
 
 	-- parse strings
-	local f_str_surrogateprev = 0
-
-	local f_str_tbl = {
-		['"']  = '"',
-		['\\'] = '\\',
-		['/']  = '/',
-		['b']  = '\b',
-		['f']  = '\f',
-		['n']  = '\n',
-		['r']  = '\r',
-		['t']  = '\t'
-	}
-
-	local function f_str_subst(ch, rest)
-		-- 0.000003814697265625 = 2^-18
-		-- 0.000244140625 = 2^-12
-		-- 0.015625 = 2^-6
-		local u8
-		if ch == 'u' then
-			local l = len(rest)
-			local ucode = match(rest, '^[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]')
-			if not ucode then
-				parseerror("invalid unicode charcode")
-			end
-			ucode = tonumber(ucode, 16)
-			rest = sub(rest, 5)
-			if ucode < 0x80 then -- 1byte
-				u8 = char(ucode)
-			elseif ucode < 0x800 then -- 2byte
-				u8 = char(0xC0 + floor(ucode * 0.015625) % 0x10000, 0x80 + ucode % 0x40)
-			elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
-				u8 = char(0xE0 + floor(ucode * 0.000244140625) % 0x10000, 0x80 + floor(ucode * 0.015625) % 0x40, 0x80 + ucode % 0x40)
-			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
-				if f_str_surrogateprev == 0 then
-					f_str_surrogateprev = ucode
-					if rest == '' then
-						return ''
-					end
-				end
-			else -- surrogate pair 2nd
-				if f_str_surrogateprev == 0 then
-					f_str_surrogateprev = 1
-				else
-					ucode = 0x10000 + (f_str_surrogateprev - 0xD800) * 0x400 + (ucode - 0xDC00)
-					f_str_surrogateprev = 0
-					u8 = char(0xF0 + floor(ucode * 0.000003814697265625), 0x80 + floor(ucode * 0.000244140625) % 0x40, 0x80 + floor(ucode * 0.015625) % 0x40, 0x80 + ucode % 0x40)
-				end
-			end
-		end
-		if f_str_surrogateprev ~= 0 then
-			parseerror("invalid surrogate pair")
-		end
-		return (u8 or f_str_tbl[ch] or parseerror("invalid escape sequence")) .. rest
-	end
+	local f_str_lib = genstrlib(parseerror)
+	local f_str_surrogateok = f_str_lib.surrogateok
+	local f_str_subst = f_str_lib.subst
 
 	local function f_str(iskey)
 		local pos2 = pos
@@ -342,7 +297,7 @@ local function newparser(src, saxtbl)
 
 		if bs then
 			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
-			if f_str_surrogateprev ~= 0 then
+			if not f_str_surrogateok() then
 				parseerror("invalid surrogate pair")
 			end
 		end

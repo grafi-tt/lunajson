@@ -7,11 +7,13 @@ for l in *-decoder.lua; do
 	for j in validjson/*.json; do
 		echo "### ${j}"
 		echo "#### lua51"
-		eval "${lua51}" test.lua valid "${l}" "${j}"
+		eval "${lua51}" test.lua valid "${l}" "${j}" 2>&1
 		echo "#### lua52"
-		eval "${lua52}" test.lua valid "${l}" "${j}"
+		eval "${lua52}" test.lua valid "${l}" "${j}" 2>&1
+		echo "#### lua53"
+		eval "${lua53}" test.lua valid "${l}" "${j}" 2>&1
 		echo "#### luajit"
-		eval "${luajit}" test.lua valid "${l}" "${j}"
+		eval "${luajit}" test.lua valid "${l}" "${j}" 2>&1
 	done
 done
 
@@ -21,11 +23,13 @@ for l in *-decoder.lua; do
 	for j in invalidjson/*.json; do
 		echo "### ${j}"
 		echo "#### lua51"
-		eval "${lua51}" test.lua invalid "${l}" "${j}"
+		eval "${lua51}" test.lua invalid "${l}" "${j}" 2>&1
 		echo "#### lua52"
-		eval "${lua52}" test.lua invalid "${l}" "${j}"
+		eval "${lua52}" test.lua invalid "${l}" "${j}" 2>&1
+		echo "#### lua53"
+		eval "${lua53}" test.lua invalid "${l}" "${j}" 2>&1
 		echo "#### luajit"
-		eval "${luajit}" test.lua invalid "${l}" "${j}"
+		eval "${luajit}" test.lua invalid "${l}" "${j}" 2>&1
 	done
 done
 
@@ -40,11 +44,13 @@ for l in *-decoder.lua; do
 	for j in benchjson/*.json; do
 		echo "### ${j}"
 		echo "#### lua51"
-		eval "${lua51}" test.lua bench "${l}" "${j}"
+		eval "${lua51}" test.lua bench "${l}" "${j}" 2>&1
 		echo "#### lua52"
-		eval "${lua52}" test.lua bench "${l}" "${j}"
+		eval "${lua52}" test.lua bench "${l}" "${j}" 2>&1
+		echo "#### lua53"
+		eval "${lua53}" test.lua bench "${l}" "${j}" 2>&1
 		echo "#### luajit"
-		eval "${luajit}" test.lua bench "${l}" "${j}"
+		eval "${luajit}" test.lua bench "${l}" "${j}" 2>&1
 	done
 done
 cd benchjson
