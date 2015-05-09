@@ -11,58 +11,54 @@ local function dump(v)
 	local i = 1
 
 	local depth = 0
-	local depth8 = 1
+	local depth8 = 0
 	local view = 1
 	local usestack
 	local vars = {'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v1'}
 	local vars2 = {'v1[', 'v2[', 'v3[', 'v4[', 'v5[', 'v6[', 'v7[', 'v8['}
 	local var = 'v1'
-	local nextvar = 'v2'
+	local nextvar = 'v1'
 	local var2 = 'v1['
-	local nextvar2 = 'v2['
+	local nextvar2 = 'v1['
 
 	local function incdepth()
 		depth = depth+1
-		if depth > 1 then
-			depth8 = depth8+1
-			if depth8 > 8 then
-				depth8 = 0
-			end
-			var = nextvar
-			nextvar = vars[depth8+1]
-			var2 = vars2[depth8]
-			if depth >= view+8 then
-				usestack = true
-				view = view+1
-				builder[i] = 'stack['
-				builder[i+1] = depth-8
-				builder[i+2] = ']='
-				builder[i+3] = var
-				builder[i+4] = '\n'
-				i = i+5
-			end
+		depth8 = depth8+1
+		if depth8 > 8 then
+			depth8 = 0
+		end
+		var = nextvar
+		nextvar = vars[depth8+1]
+		var2 = vars2[depth8]
+		if depth >= view+8 then
+			usestack = true
+			view = view+1
+			builder[i] = 'stack['
+			builder[i+1] = depth-8
+			builder[i+2] = ']='
+			builder[i+3] = var
+			builder[i+4] = '\n'
+			i = i+5
 		end
 	end
 
 	local function decdepth()
 		depth = depth-1
-		if depth > 0 then
-			depth8 = depth8-1
-			if depth8 < 1 then
-				depth8 = 8
-			end
-			nextvar = var
-			var = vars[depth8]
-			nextvar2 = var2
-			var2 = vars2[depth8]
-			if depth < view then
-				view = view-1
-				builder[i] = var
-				builder[i+1] = '=stack['
-				builder[i+2] = depth
-				builder[i+3] = ']\n'
-				i = i+4
-			end
+		depth8 = depth8-1
+		if depth8 < 1 then
+			depth8 = 8
+		end
+		nextvar = var
+		var = vars[depth8]
+		nextvar2 = var2
+		var2 = vars2[depth8]
+		if depth < view and depth > 0 then
+			view = view-1
+			builder[i] = var
+			builder[i+1] = '=stack['
+			builder[i+2] = depth
+			builder[i+3] = ']\n'
+			i = i+4
 		end
 	end
 
