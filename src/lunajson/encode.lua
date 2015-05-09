@@ -7,6 +7,8 @@ local rawequal = rawequal
 local tostring = tostring
 local pairs = pairs
 local type = type
+local huge = 1/0
+local tiny = -1/0
 
 local function encode(v, nullv)
 	local i = 1
@@ -19,33 +21,38 @@ local function encode(v, nullv)
 	end
 
 	local radixmark = match(tostring(0.5), '[^0-9]')
-	local delimmark = match(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
+	local delimmark = match(tostring(12345.12345), '[^0-9' .. radixmark .. ']')
 	if radixmark == '.' then
 		radixmark = nil
 	end
 
-	local f_number = function(n)
-		builder[i] = format("%.17g", n)
-		i = i+1
-	end
+	local radixordelim
 	if radixmark or delimmark then
+		radixordelim = true
 		if radixmark and find(radixmark, '%W') then
 			radixmark = '%' .. radixmark
 		end
-		if delimmark and find(selimmark, '%W') then
+		if delimmark and find(delimmark, '%W') then
 			delimmark = '%' .. delimmark
 		end
-		f_number = function(n)
+	end
+
+	local f_number = function(n)
+		if tiny < n and n < huge then
 			local s = format("%.17g", n)
-			if delimmark then
-				s = gsub(s, delimmark, '')
-			end
-			if radixmark then
-				s = gsub(s, radixmark, '.')
+			if radixordelim then
+				if delimmark then
+					s = gsub(s, delimmark, '')
+				end
+				if radixmark then
+					s = gsub(s, radixmark, '.')
+				end
 			end
 			builder[i] = s
 			i = i+1
+			return
 		end
+		error('invalid number')
 	end
 
 	local doencode
