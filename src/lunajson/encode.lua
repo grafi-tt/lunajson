@@ -18,36 +18,33 @@ local function encode(v, nullv)
 		i = i+1
 	end
 
+	local radixmark = match(tostring(0.5), '[^0-9]')
+	local delimmark = match(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
+	if radixmark == '.' then
+		radixmark = nil
+	end
+
 	local f_number = function(n)
 		builder[i] = format("%.17g", n)
 		i = i+1
 	end
-
-	do
-		local radixmark = match(tostring(0.5), '[^0-9]')
-		local delimmark = match(tostring(123456789.123456789), '[^0-9' .. radixmark .. ']')
-		if radixmark == '.' then
-			radixmark = nil
+	if radixmark or delimmark then
+		if radixmark and find(radixmark, '%W') then
+			radixmark = '%' .. radixmark
 		end
-
-		if radixmark or delimmark then
-			if radixmark and find(radixmark, '%W') then
-				radixmark = '%' .. radixmark
+		if delimmark and find(selimmark, '%W') then
+			delimmark = '%' .. delimmark
+		end
+		f_number = function(n)
+			local s = format("%.17g", n)
+			if delimmark then
+				s = gsub(s, delimmark, '')
 			end
-			if delimmark and find(selimmark, '%W') then
-				delimmark = '%' .. delimmark
+			if radixmark then
+				s = gsub(s, radixmark, '.')
 			end
-			f_number = function(n)
-				local s = format("%.17g", n)
-				if delimmark then
-					s = gsub(s, delimmark, '')
-				end
-				if radixmark then
-					s = gsub(s, radixmark, '.')
-				end
-				builder[i] = s
-				i = i+1
-			end
+			builder[i] = s
+			i = i+1
 		end
 	end
 
