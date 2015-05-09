@@ -242,6 +242,7 @@ local function newparser(src, saxtbl)
 		if newpos then
 			return cont_number(mns, newpos)
 		end
+		pos = pos-1
 		return generic_number(mns)
 	end
 
@@ -250,6 +251,7 @@ local function newparser(src, saxtbl)
 		if byte(json, newpos) ~= 0x2E then -- check that num is not ended by comma
 			return cont_number(mns, newpos)
 		end
+		pos = pos-1
 		return generic_number(mns)
 	end
 
