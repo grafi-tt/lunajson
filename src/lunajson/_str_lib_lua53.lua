@@ -28,6 +28,7 @@ return function(myerror)
 	escapetbl.__index = function()
 		myerror("invalid escape sequence")
 	end
+	setmetatable(escapetbl, escapetbl)
 
 	local surrogateprev = 0
 
