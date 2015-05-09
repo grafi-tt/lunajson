@@ -10,6 +10,14 @@ local type = type
 local huge = 1/0
 local tiny = -1/0
 
+local f_string_pat
+if _VERSION <= "Lua 5.1" then
+	-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
+	f_string_pat = '[^ -!#-[%]^-\255]'
+else
+	f_string_pat = '[\0-\31"\\]'
+end
+
 local function encode(v, nullv)
 	local i = 1
 	local builder = {}
@@ -72,11 +80,9 @@ local function encode(v, nullv)
 	setmetatable(f_string_subst, f_string_subst)
 
 	local function f_string(s)
-		-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
-		local pat = '[^\32-\33\35-\91\93-\255]'
 		builder[i] = '"'
-		if find(s, pat) then
-			s = gsub(s, pat, f_string_subst)
+		if find(s, f_string_pat) then
+			s = gsub(s, f_string_pat, f_string_subst)
 		end
 		builder[i+1] = s
 		builder[i+2] = '"'
