@@ -48,7 +48,7 @@ local function encode(v, nullv)
 		end
 	end
 
-	local dodecode
+	local doencode
 
 	local f_string_subst = {
 		['"'] = '\\"',
@@ -87,7 +87,7 @@ local function encode(v, nullv)
 			builder[i] = '['
 			i = i+1
 			for j = 1, tmp do
-				dodecode(o[j])
+				doencode(o[j])
 				builder[i] = ','
 				i = i+1
 			end
@@ -103,7 +103,7 @@ local function encode(v, nullv)
 				i = i+1
 				local j = 2
 				repeat
-					dodecode(tmp)
+					doencode(tmp)
 					tmp = o[j]
 					if tmp == nil then
 						break
@@ -125,7 +125,7 @@ local function encode(v, nullv)
 					f_string(k)
 					builder[i] = ':'
 					i = i+1
-					dodecode(v)
+					doencode(v)
 					builder[i] = ','
 					i = i+1
 				end
@@ -151,7 +151,7 @@ local function encode(v, nullv)
 	}
 	setmetatable(dispatcher, dispatcher)
 
-	function dodecode(v)
+	function doencode(v)
 		if v == nullv then
 			builder[i] = 'null'
 			i = i+1
@@ -161,10 +161,8 @@ local function encode(v, nullv)
 	end
 
 	-- exec
-	dodecode(v)
+	doencode(v)
 	return table.concat(builder)
 end
 
-return {
-	encode = encode
-}
+return encode
