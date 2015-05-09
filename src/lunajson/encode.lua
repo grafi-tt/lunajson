@@ -142,7 +142,7 @@ local function encode(v, nullv)
 
 	local dispatcher = {
 		boolean = f_tostring,
-		number = f_tostring,
+		number = f_number,
 		string = f_string,
 		table = arraylen and f_table_arraylen or f_table,
 		__index = function()
