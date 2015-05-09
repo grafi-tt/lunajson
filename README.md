@@ -18,7 +18,7 @@ Or you can download source manually and copy `src/*` into somewhere inside `pack
 
 ## API
 ### lunajson.decode(jsonstr, pos = 1, [nullv, [arraylen]])
-Decode `jsonstr` from `pos`. `null` inside json will be codes as `nullv` if specified and discarded if not specified.
+Decode `jsonstr` from `pos`. `null` inside JSON will be codes as `nullv` if specified and discarded if not specified.
 This function returns the decoded value and `endpos+1`, if `jsonstr` contains valid JSON ending at `endpos`. Otherwise, an error will occur.
 If `arraylen` is true, the length of an array `ary` will be stored in `ary[0]`. This behavior is useful when empty arrays should not be confused with empty objects.
 
