@@ -454,43 +454,39 @@ local function newparser(src, saxtbl)
 		doparse()
 	end
 
-	local function isend()
-		if pos > jsonlen then
+	local function tryc()
+		local c = byte(json, pos)
+		if not c then
 			jsonnxt()
+			c = byte(json, pos)
 		end
-	end
-
-	local function seek(n)
-		pos = pos+n
-		while pos > jsonlen+1 do
-			jsonnxt()
-			if not json then
-				parseerror("unexpected termination")
-			end
-			pos = pos-jsonlen
-			jsonlen = len(json)
-			jsonlen = len(json)
-		end
+		return c
 	end
 
 	local function read(n)
-		local pos2 = pos+n
-		while pos > jsonlen do
-			json = jsonnxt()
-			if not json then
-				return parseerror("unexpected termination")
-			end
-			pos = pos-jsonlen
-			jsonlen = len(json)
-			jsonlen = len(json)
+		if n < 0 then
+			error("the argument must be non-negative")
 		end
+		local pos2 = (pos-1) + n
+		local str = sub(json, pos, pos2)
+		while pos2 > jsonlen and jsonlen ~= 0 do
+			jsonnxt()
+			pos2 = pos2 - (jsonlen - (pos-1))
+			str = str .. sub(json, pos, pos2)
+		end
+		pos = pos2+1
+		return str
+	end
+
+	local function tellpos()
+		return acc + pos
 	end
 
 	return {
 		run = run,
-		read = read,
-		skip = skip,
 		tryc = tryc,
+		read = read,
+		tellpos = tellpos,
 	}
 end
 
