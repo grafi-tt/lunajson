@@ -495,7 +495,7 @@ local function newfileparser(fn, saxtbl)
 	local function gen()
 		local s
 		if fp then
-			s = fp:read(1)
+			s = fp:read(8192)
 			if not s then
 				fp:close()
 				fp = nil
