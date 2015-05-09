@@ -9,7 +9,7 @@ local concat = table.concat
 local floor = math.floor
 local tonumber = tonumber
 
-local function decode(json, pos, nullv)
+local function decode(json, pos, nullv, arraylen)
 	local _
 	local jsonlen = len(json)
 	local dodecode
@@ -193,10 +193,10 @@ local function decode(json, pos, nullv)
 
 		_, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
+
+		local i = 0
 		if byte(json, pos) ~= 0x5D then
 			local newpos = pos-1
-
-			local i = 0
 			repeat
 				i = i+1
 				pos = newpos+1
@@ -212,6 +212,9 @@ local function decode(json, pos, nullv)
 		end
 
 		pos = pos+1
+		if arraylen then
+			ary[0] = i
+		end
 		return ary
 	end
 
