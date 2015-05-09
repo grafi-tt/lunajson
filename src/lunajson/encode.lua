@@ -82,62 +82,62 @@ local function encode(v, nullv)
 		end
 		visited[o] = true
 
-		local alen = o[0]
-		if type(alen) == 'number' then
+		local tmp = o[0]
+		if type(tmp) == 'number' then -- arraylen available
 			builder[i] = '['
 			i = i+1
-			for j = 1, alen do
+			for j = 1, tmp do
 				dodecode(o[j])
 				builder[i] = ','
 				i = i+1
 			end
-			if alen > 0 then
+			if tmp > 0 then
 				i = i-1
 			end
 			builder[i] = ']'
-			i = i+1
-			return
-		end
 
-		local v = o[1]
-		if v ~= nil then
-			builder[i] = '['
-			i = i+1
-			local j = 2
-			repeat
-				dodecode(v)
-				v = o[j]
-				if v == nil then
-					break
-				end
-				j = j+1
-				builder[i] = ','
+		else
+			tmp = o[1]
+			if tmp ~= nil then -- detected as array
+				builder[i] = '['
 				i = i+1
-			until false
-			builder[i] = ']'
-			i = i+1
-			return
+				local j = 2
+				repeat
+					dodecode(tmp)
+					tmp = o[j]
+					if tmp == nil then
+						break
+					end
+					j = j+1
+					builder[i] = ','
+					i = i+1
+				until false
+				builder[i] = ']'
+
+			else -- detected as object
+				builder[i] = '{'
+				i = i+1
+				local tmp = i
+				for k, v in pairs(o) do
+					if type(k) ~= 'string' then
+						error("non-string key")
+					end
+					f_string(k)
+					builder[i] = ':'
+					i = i+1
+					dodecode(v)
+					builder[i] = ','
+					i = i+1
+				end
+				if i > tmp then
+					i = i-1
+				end
+				builder[i] = '}'
+			end
 		end
 
-		builder[i] = '{'
 		i = i+1
-		local oldi = i
-		for k, v in pairs(o) do
-			if type(k) ~= 'string' then
-				error("non-string key")
-			end
-			f_string(k)
-			builder[i] = ':'
-			i = i+1
-			dodecode(v)
-			builder[i] = ','
-			i = i+1
-		end
-		if i > oldi then
-			i = i-1
-		end
-		builder[i] = '}'
-		i = i+1
+		visited[o] = nil
 	end
 
 	local dispatcher = {
