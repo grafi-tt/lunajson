@@ -1,5 +1,3 @@
-dofile('../luapath.lua')
-
 local task = arg[1]
 local decoderfile = arg[2]
 local jsonfile = arg[3]

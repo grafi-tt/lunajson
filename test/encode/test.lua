@@ -1,5 +1,3 @@
-dofile('../luapath.lua')
-
 local task = arg[1]
 local encoderfile = arg[2]
 local datafile = arg[3]
