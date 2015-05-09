@@ -22,6 +22,11 @@ local function decode(json, pos, nullv, arraylen)
 		error("parse error at " .. pos .. ": " .. errmsg)
 	end
 
+	-- parse error
+	local function f_err()
+		decodeerror('invalid value')
+	end
+
 	-- parse constants
 	local function f_nul()
 		local str = sub(json, pos, pos+2)
@@ -207,25 +212,23 @@ local function decode(json, pos, nullv, arraylen)
 	end
 
 	local dispatcher = {
-		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-		false, false, f_str, false, false, false, false, false, false, false, false, false, false, f_mns, false, false,
-		f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, false, false, false, false, false, false,
-		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-		false, false, false, false, false, false, false, false, false, false, false, f_ary, false, false, false, false,
-		false, false, false, false, false, false, f_fls, false, false, false, false, false, false, false, f_nul, false,
-		false, false, false, false, f_tru, false, false, false, false, false, false, f_obj, false, false, false, false,
+		       f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_str, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_mns, f_err, f_err,
+		f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_ary, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_fls, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_nul, f_err,
+		f_err, f_err, f_err, f_err, f_tru, f_err, f_err, f_err, f_err, f_err, f_err, f_obj, f_err, f_err, f_err, f_err,
 	}
+	dispatcher[0] = f_err
+	dispatcher.__index = function() -- byte is nil
+		decodeerror("unexpected termination")
+	end
+	setmetatable(dispatcher, dispatcher)
 
 	function dodecode()
-		local c = byte(json, pos)
-		if not c then
-			decodeerror("unexpected termination")
-		end
-		local f = dispatcher[c+1]
-		if not f then
-			decodeerror("invalid value")
-		end
+		local f = dispatcher[byte(json, pos)]
 		pos = pos+1
 		return f()
 	end

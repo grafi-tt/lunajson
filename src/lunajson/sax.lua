@@ -93,6 +93,11 @@ local function newparser(src, saxtbl)
 		end
 	end
 
+	-- parse error
+	local function f_err()
+		parseerror('invalid value')
+	end
+
 	-- parse constants
 	local function generic_constant(target, targetlen, ret, sax_f)
 		for i = 1, targetlen do
@@ -419,18 +424,19 @@ local function newparser(src, saxtbl)
 	end
 
 	local dispatcher = {
-		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-		false, false, f_str, false, false, false, false, false, false, false, false, false, false, f_mns, false, false,
-		f_zro, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, false, false, false, false, false, false,
-		false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-		false, false, false, false, false, false, false, false, false, false, false, f_ary, false, false, false, false,
-		false, false, false, false, false, false, f_fls, false, false, false, false, false, false, false, f_nul, false,
-		false, false, false, false, f_tru, false, false, false, false, false, false, f_obj, false, false, false, false,
+		       f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_str, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_mns, f_err, f_err,
+		f_zro, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_ary, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_fls, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_nul, f_err,
+		f_err, f_err, f_err, f_err, f_tru, f_err, f_err, f_err, f_err, f_err, f_err, f_obj, f_err, f_err, f_err, f_err,
 	}
+	dispatcher[0] = f_err
 
 	function doparse()
-		local f = dispatcher[byte(json, pos)+1] -- byte(json, pos) is always available here
+		local f = dispatcher[byte(json, pos)] -- byte(json, pos) is always available here
 		if not f then
 			parseerror("unknown value")
 		end
