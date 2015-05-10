@@ -31,8 +31,7 @@ local function decode(json, pos, nullv, arraylen)
 
 	-- parse constants
 	local function f_nul()
-		local str = sub(json, pos, pos+2)
-		if str == 'ull' then
+		if sub(json, pos, pos+2) == 'ull' then
 			pos = pos+3
 			return nullv
 		end
@@ -40,8 +39,7 @@ local function decode(json, pos, nullv, arraylen)
 	end
 
 	local function f_fls()
-		local str = sub(json, pos, pos+3)
-		if str == 'alse' then
+		if sub(json, pos, pos+3) == 'alse' then
 			pos = pos+4
 			return false
 		end
@@ -49,8 +47,7 @@ local function decode(json, pos, nullv, arraylen)
 	end
 
 	local function f_tru()
-		local str = sub(json, pos, pos+2)
-		if str == 'rue' then
+		if sub(json, pos, pos+2) == 'rue' then
 			pos = pos+3
 			return true
 		end

@@ -117,8 +117,7 @@ local function newparser(src, saxtbl)
 	end
 
 	local function f_nul()
-		local str = sub(json, pos, pos+2)
-		if str == 'ull' then
+		if sub(json, pos, pos+2) == 'ull' then
 			pos = pos+3
 			if sax_null then
 				return sax_null(nil)
@@ -130,8 +129,7 @@ local function newparser(src, saxtbl)
 	end
 
 	local function f_fls()
-		local str = sub(json, pos, pos+3)
-		if str == 'alse' then
+		if sub(json, pos, pos+3) == 'alse' then
 			pos = pos+4
 			if sax_boolean then
 				return sax_boolean(false)
@@ -143,8 +141,7 @@ local function newparser(src, saxtbl)
 	end
 
 	local function f_tru()
-		local str = sub(json, pos, pos+2)
-		if str == 'rue' then
+		if sub(json, pos, pos+2) == 'rue' then
 			pos = pos+3
 			if sax_boolean then
 				return sax_boolean(true)
