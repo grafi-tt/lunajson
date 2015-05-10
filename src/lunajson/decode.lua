@@ -14,8 +14,10 @@ else
 end
 
 local function decode(json, pos, nullv, arraylen)
-	local _
-	local dodecode
+	local dispatcher
+	-- it is temporary for dispatcher[c] and
+	-- dummy for 1st return value of find
+	local f
 
 	-- helper
 	local function decodeerror(errmsg)
@@ -70,7 +72,7 @@ local function decode(json, pos, nullv, arraylen)
 	local function cont_number(mns, newpos)
 		local expc = byte(json, newpos+1)
 		if expc == 0x45 or expc == 0x65 then -- e or E?
-			_, newpos = find(json, '^[+-]?[0-9]+', newpos+2)
+			f, newpos = find(json, '^[+-]?[0-9]+', newpos+2)
 			if not newpos then
 				decodeerror('invalid number')
 			end
@@ -151,7 +153,7 @@ local function decode(json, pos, nullv, arraylen)
 	local function f_ary()
 		local ary = {}
 
-		_, pos = find(json, '^[ \n\r\t]*', pos)
+		f, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
 
 		local i = 0
@@ -159,12 +161,13 @@ local function decode(json, pos, nullv, arraylen)
 			local newpos = pos-1
 			repeat
 				i = i+1
-				pos = newpos+1
-				ary[i] = dodecode()
-				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				f = dispatcher[byte(json,newpos+1)]
+				pos = newpos+2
+				ary[i] = f()
+				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 			until not newpos
 
-			_, newpos = find(json, '^[ \n\r\t]*%]', pos)
+			f, newpos = find(json, '^[ \n\r\t]*%]', pos)
 			if not newpos then
 				decodeerror("no closing bracket of an array")
 			end
@@ -182,7 +185,7 @@ local function decode(json, pos, nullv, arraylen)
 	local function f_obj()
 		local obj = {}
 
-		_, pos = find(json, '^[ \n\r\t]*', pos)
+		f, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
 		if byte(json, pos) ~= 0x7D then
 			local newpos = pos-1
@@ -194,16 +197,17 @@ local function decode(json, pos, nullv, arraylen)
 				end
 				pos = pos+1
 				local key = f_str()
-				_, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
+				f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
 				if not newpos then
 					decodeerror("no colon after a key")
 				end
-				pos = newpos+1
-				obj[key] = dodecode()
-				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				f = dispatcher[byte(json, newpos+1)]
+				pos = newpos+2
+				obj[key] = f()
+				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 			until not newpos
 
-			_, newpos = find(json, '^[ \n\r\t]*}', pos)
+			f, newpos = find(json, '^[ \n\r\t]*}', pos)
 			if not newpos then
 				decodeerror("no closing bracket of an object")
 			end
@@ -214,7 +218,7 @@ local function decode(json, pos, nullv, arraylen)
 		return obj
 	end
 
-	local dispatcher = {
+	dispatcher = {
 		       f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_str, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_mns, f_err, f_err,
@@ -230,15 +234,12 @@ local function decode(json, pos, nullv, arraylen)
 	end
 	setmetatable(dispatcher, dispatcher)
 
-	function dodecode()
-		local f = dispatcher[byte(json, pos)]
-		pos = pos+1
-		return f()
-	end
-
-	_, pos = find(json, '^[ \n\r\t]*', pos)
+	f, pos = find(json, '^[ \n\r\t]*', pos)
 	pos = pos+1
-	local v = dodecode()
+
+	f = dispatcher[byte(json, pos)]
+	pos = pos+1
+	local v = f()
 	return v, pos
 end
 

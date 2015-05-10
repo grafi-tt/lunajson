@@ -16,11 +16,13 @@ else
 end
 
 local function newparser(src, saxtbl)
-	local _
 	local json, jsonnxt
 	local jsonlen, pos, acc = 0, 1, 0
 
-	local doparse
+	local dispatcher
+	-- it is temporary for dispatcher[c] and
+	-- dummy for 1st return value of find
+	local f
 
 	-- initialize
 	local function nop() end
@@ -336,7 +338,9 @@ local function newparser(src, saxtbl)
 		if byte(json, pos) ~= 0x5D then
 			local newpos
 			while true do
-				doparse()
+				f = dispatcher[byte(json, pos)]
+				pos = pos+1
+				f()
 				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 				if not newpos then
 					_, newpos = find(json, '^[ \n\r\t]*%]', pos)
@@ -396,7 +400,9 @@ local function newparser(src, saxtbl)
 				if pos > jsonlen then
 					spaces()
 				end
-				doparse()
+				f = dispatcher[byte(json, pos)]
+				pos = pos+1
+				f()
 				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 				if not newpos then
 					_, newpos = find(json, '^[ \n\r\t]*}', pos)
@@ -428,7 +434,8 @@ local function newparser(src, saxtbl)
 		end
 	end
 
-	local dispatcher = {
+	-- key should be non-nil
+	dispatcher = {
 		       f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_str, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_mns, f_err, f_err,
@@ -440,18 +447,11 @@ local function newparser(src, saxtbl)
 	}
 	dispatcher[0] = f_err
 
-	function doparse()
-		local f = dispatcher[byte(json, pos)] -- byte(json, pos) is always available here
-		if not f then
-			parseerror("unknown value")
-		end
-		pos = pos+1
-		f()
-	end
-
 	local function run()
 		spaces()
-		doparse()
+		f = dispatcher[byte(json, pos)]
+		pos = pos+1
+		f()
 	end
 
 	local function tryc()
