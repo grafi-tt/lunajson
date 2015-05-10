@@ -125,24 +125,32 @@ local function decode(json, pos, nullv, arraylen)
 
 	local function f_str()
 		local newpos = pos-2
-		local pos2
+		local pos2 = pos
+		local c1, c2
 		repeat
-			pos2 = newpos+2
-			newpos = find(json, '[\\"]', pos2)
+			newpos = find(json, '"', pos2, true)
 			if not newpos then
 				decodeerror("unterminated string")
 			end
-		until byte(json, newpos) == 0x22
+			pos2 = newpos+1
+			while true do
+				c1, c2 = byte(json, newpos-2, newpos-1)
+				if c2 ~= 0x5C or c1 ~= 0x5C then
+					break
+				end
+				newpos = newpos-2
+			end
+		until c2 ~= 0x5C
 
-		local str = sub(json, pos, newpos-1)
-		if pos2 ~= pos then
+		local str = sub(json, pos, pos2-2)
+		if find(str, '\\', 1, true) then
 			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
 			if not f_str_surrogateok() then
 				decodeerror("invalid surrogate pair")
 			end
 		end
 
-		pos = newpos+1
+		pos = pos2
 		return str
 	end
 
