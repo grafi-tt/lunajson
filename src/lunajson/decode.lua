@@ -142,7 +142,9 @@ local function decode(json, pos, nullv, arraylen)
 	local f_str_surrogateok = f_str_lib.surrogateok
 	local f_str_subst = f_str_lib.subst
 
-	local function f_str()
+	local f_str_keycache = {}
+
+	local function f_str(iskey)
 		local newpos = pos-2
 		local pos2 = pos
 		local c1, c2
@@ -162,15 +164,25 @@ local function decode(json, pos, nullv, arraylen)
 		until c2 ~= 0x5C
 
 		local str = sub(json, pos, pos2-2)
-		if find(str, '\\', 1, true) then
-			str = gsub(str, '\\(.)([^\\]*)', f_str_subst)
+		pos = pos2
+
+		if iskey then
+			local str2 = f_str_keycache[str]
+			if str2 then
+				return str2
+			end
+		end
+		local str2 = str
+		if find(str2, '\\', 1, true) then
+			str2 = gsub(str2, '\\(.)([^\\]*)', f_str_subst)
 			if not f_str_surrogateok() then
 				decodeerror("invalid surrogate pair")
 			end
 		end
-
-		pos = pos2
-		return str
+		if iskey then
+			f_str_keycache[str] = str2
+		end
+		return str2
 	end
 
 	-- parse arrays
@@ -220,7 +232,7 @@ local function decode(json, pos, nullv, arraylen)
 					decodeerror("not key")
 				end
 				pos = pos+1
-				local key = f_str()
+				local key = f_str(true)
 				f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
 				if not newpos then
 					decodeerror("no colon after a key")
