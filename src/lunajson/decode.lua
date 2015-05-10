@@ -233,9 +233,25 @@ local function decode(json, pos, nullv, arraylen)
 				end
 				pos = pos+1
 				local key = f_str(true)
-				f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
-				if not newpos then
-					decodeerror("no colon after a key")
+
+				-- optimized for compact json
+				f = f_err
+				do
+					local c1, c2, c3  = byte(json, pos, pos+3)
+					if c1 == 0x3A then
+						newpos = pos
+						if c2 == 0x20 then
+							newpos = newpos+1
+							c2 = c3
+						end
+						f = dispatcher[c2]
+					end
+				end
+				if f == f_err then
+					f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
+					if not newpos then
+						decodeerror("no colon after a key")
+					end
 				end
 				f = dispatcher[byte(json, newpos+1)]
 				pos = newpos+2
