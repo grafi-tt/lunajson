@@ -33,6 +33,18 @@ for l in all-*-decoder.lua test-*-decoder.lua; do
 	done
 done
 
+echo "# saxread"
+echo "#### lua51"
+eval "${lua51}" test-saxread.lua 2>&1
+echo "#### lua52"
+eval "${lua52}" test-saxread.lua 2>&1
+echo "#### lua53"
+eval "${lua53}" test-saxread.lua 2>&1
+echo "#### luajit"
+eval "${luajit}" test-saxread.lua 2>&1
+
+exit
+
 echo "# bench"
 for l in all-*-decoder.lua bench-*-decoder.lua; do
 	echo "## $l"

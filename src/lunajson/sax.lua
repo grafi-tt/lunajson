@@ -479,7 +479,9 @@ local function newparser(src, saxtbl)
 			pos2 = pos2 - (jsonlen - (pos-1))
 			str = str .. sub(json, pos, pos2)
 		end
-		pos = pos2+1
+		if jsonlen ~= 0 then
+			pos = pos2+1
+		end
 		return str
 	end
 
