@@ -2,7 +2,6 @@ local byte = string.byte
 local char = string.char
 local find = string.find
 local gsub = string.gsub
-local len = string.len
 local match = string.match
 local sub = string.sub
 local floor = math.floor
@@ -29,7 +28,7 @@ local function newparser(src, saxtbl)
 
 	if type(src) == 'string' then
 		json = src
-		jsonlen = len(json)
+		jsonlen = #json
 		jsonnxt = function()
 			json = ''
 			jsonlen = 0
@@ -47,7 +46,7 @@ local function newparser(src, saxtbl)
 					jsonnxt = nop
 					return
 				end
-				jsonlen = len(json)
+				jsonlen = #json
 			until jsonlen > 0
 		end
 		jsonnxt()
@@ -199,7 +198,7 @@ local function newparser(src, saxtbl)
 			_, newpos = find(str, '^[+-]?[0-9]+', newpos+2)
 		end
 
-		if newpos ~= len(str) then
+		if newpos ~= #str then
 			parseerror('invalid number')
 		end
 		local num = fixedtonumber(str)
@@ -256,19 +255,20 @@ local function newparser(src, saxtbl)
 
 	local function f_mns()
 		local c = byte(json, pos)
-		if c then
+		f = dispatcher[c]
+		if f == f_num or f == f_zro then
 			pos = pos+1
-			if c > 0x30 then
-				if c < 0x3A then
-					return f_num(true)
-				end
-			else
-				if c > 0x2F then
-					return f_zro(true)
-				end
+			return f(true)
+		end
+		if not c then
+			c = tellc()
+			f = dispatcher[c]
+			if f == f_num or f == f_zro then
+				pos = pos+1
+				return f(true)
 			end
 		end
-		return generic_number(true)
+		parseerror("invalid number")
 	end
 
 	-- parse strings

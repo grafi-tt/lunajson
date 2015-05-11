@@ -18,10 +18,9 @@ else
 	f_string_pat = '[\0-\31"\\]'
 end
 
-local function encode(v, nullv)
-	local i = 1
-	local builder = {}
-	local visited = {}
+local function newencoder()
+	local v, nullv
+	local i, builder, visited
 
 	local function f_tostring(v)
 		builder[i] = tostring(v)
@@ -173,9 +172,15 @@ local function encode(v, nullv)
 		return dispatcher[type(v)](v)
 	end
 
-	-- exec
-	doencode(v)
-	return table.concat(builder)
+	local function encode(v_, nullv_)
+		v, nullv = v_, nullv_
+		i, builder, visited = 1, {}, {}
+
+		doencode(v)
+		return table.concat(builder)
+	end
+
+	return encode
 end
 
-return encode
+return newencoder

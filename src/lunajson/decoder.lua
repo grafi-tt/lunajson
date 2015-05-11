@@ -13,7 +13,9 @@ else
 	genstrlib = require 'lunajson._str_lib'
 end
 
-local function decode(json, pos, nullv, arraylen)
+local function newdecoder()
+	local json, pos, nullv, arraylen
+
 	local dispatcher
 	-- it is temporary for dispatcher[c] and
 	-- dummy for 1st return value of find
@@ -286,13 +288,20 @@ local function decode(json, pos, nullv, arraylen)
 	end
 	setmetatable(dispatcher, dispatcher)
 
-	f, pos = find(json, '^[ \n\r\t]*', pos)
-	pos = pos+1
+	-- run decoder
+	local function decode(json_, pos_, nullv_, arraylen_)
+		json, pos, nullv, arraylen = json_, pos_, nullv_, arraylen_
 
-	f = dispatcher[byte(json, pos)]
-	pos = pos+1
-	local v = f()
-	return v, pos
+		f, pos = find(json, '^[ \n\r\t]*', pos)
+		pos = pos+1
+
+		f = dispatcher[byte(json, pos)]
+		pos = pos+1
+		local v = f()
+		return v, pos
+	end
+
+	return decode
 end
 
-return decode
+return newdecoder
