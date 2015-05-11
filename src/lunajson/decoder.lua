@@ -1,10 +1,7 @@
-local byte = string.byte
-local char = string.char
-local find = string.find
-local gsub = string.gsub
-local match = string.match
-local sub = string.sub
+local error = error
+local byte, char, find, gsub, match, sub = string.byte, string.char, string.find, string.gsub, string.match, string.sub
 local tonumber = tonumber
+local tostring, setmetatable = tostring, setmetatable
 
 local genstrlib
 if _VERSION == "Lua 5.3" then
@@ -12,6 +9,8 @@ if _VERSION == "Lua 5.3" then
 else
 	genstrlib = require 'lunajson._str_lib'
 end
+
+local _ENV = nil
 
 local function newdecoder()
 	local json, pos, nullv, arraylen

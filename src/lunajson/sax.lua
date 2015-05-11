@@ -1,12 +1,8 @@
-local byte = string.byte
-local char = string.char
-local find = string.find
-local gsub = string.gsub
-local match = string.match
-local sub = string.sub
-local unpack = table.unpack or unpack
-local floor = math.floor
+local error = error
+local byte, char, find, gsub, match, sub =
+	string.byte, string.char, string.find, string.gsub, string.match, string.sub
 local tonumber = tonumber
+local tostring, type, unpack = tonumber, type, table.unpack or unpack
 
 local genstrlib
 if _VERSION == "Lua 5.3" then
@@ -14,6 +10,8 @@ if _VERSION == "Lua 5.3" then
 else
 	genstrlib = require 'lunajson._str_lib'
 end
+
+local _ENV = nil
 
 local function nop() end
 
@@ -83,7 +81,7 @@ local function newparser(src, saxtbl)
 
 	local function spaces()
 		while true do
-			_, pos = find(json, '^[ \n\r\t]*', pos)
+			f, pos = find(json, '^[ \n\r\t]*', pos)
 			if pos ~= jsonlen then
 				pos = pos+1
 				return
@@ -363,9 +361,9 @@ local function newparser(src, saxtbl)
 				f = dispatcher[byte(json, pos)]
 				pos = pos+1
 				f()
-				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 				if not newpos then
-					_, newpos = find(json, '^[ \n\r\t]*%]', pos)
+					f, newpos = find(json, '^[ \n\r\t]*%]', pos)
 					if newpos then
 						pos = newpos
 						break
@@ -404,7 +402,7 @@ local function newparser(src, saxtbl)
 				end
 				pos = pos+1
 				f_str(true)
-				_, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
+				f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
 				if not newpos then
 					spaces()
 					if byte(json, pos) ~= 0x3A then
@@ -421,9 +419,9 @@ local function newparser(src, saxtbl)
 				f = dispatcher[byte(json, pos)]
 				pos = pos+1
 				f()
-				_, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 				if not newpos then
-					_, newpos = find(json, '^[ \n\r\t]*}', pos)
+					f, newpos = find(json, '^[ \n\r\t]*}', pos)
 					if newpos then
 						pos = newpos
 						break

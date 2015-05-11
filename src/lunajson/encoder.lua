@@ -1,22 +1,20 @@
-local byte = string.byte
-local find = string.find
-local format = string.format
-local gsub = string.gsub
-local match = string.match
-local rawequal = rawequal
+local error = error
+local byte, find, format, gsub, match = string.byte, string.find, string.format,  string.gsub, string.match
+local concat = table.concat
 local tostring = tostring
-local pairs = pairs
-local type = type
-local huge = 1/0
-local tiny = -1/0
+local pairs, type = pairs, type
+local setmetatable = setmetatable
+local huge, tiny = 1/0, -1/0
 
 local f_string_pat
-if _VERSION <= "Lua 5.1" then
+if _VERSION == "Lua 5.1" then
 	-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
 	f_string_pat = '[^ -!#-[%]^-\255]'
 else
 	f_string_pat = '[\0-\31"\\]'
 end
+
+local _ENV = nil
 
 local function newencoder()
 	local v, nullv
@@ -156,7 +154,7 @@ local function newencoder()
 		boolean = f_tostring,
 		number = f_number,
 		string = f_string,
-		table = arraylen and f_table_arraylen or f_table,
+		table = f_table,
 		__index = function()
 			error("invalid type value")
 		end
@@ -177,7 +175,7 @@ local function newencoder()
 		i, builder, visited = 1, {}, {}
 
 		doencode(v)
-		return table.concat(builder)
+		return concat(builder)
 	end
 
 	return encode
