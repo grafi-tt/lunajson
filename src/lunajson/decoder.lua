@@ -70,28 +70,47 @@ local function newdecoder()
 
 	local function f_zro(mns)
 		local c = byte(json, pos)
+
 		if c == 0x2E then
-			local num = match(json, '^.[0-9][-0-9.eE+]*', pos) -- skip 0
-			if num then
-				c = #num
+			local num = match(json, '^.[0-9]*', pos) -- skip 0
+			local pos2 = #num
+			if pos2 ~= 1 then
+				pos2 = pos + pos2
+				c = byte(json, pos2)
+				if c == 0x45 or c == 0x65 then
+					num = match(json, '^[^eE]*[eE][-+0-9]*', pos)
+					pos2 = pos + #num
+				end
 				num = fixedtonumber(num)
 				if num then
-					pos = pos + c
+					pos = pos2
 					if mns then
-						num = -num
+						num = 0.0-num
+					else
+						num = num-0.0
 					end
 					return num
 				end
 			end
 			decodeerror('invalid number')
 		end
-		if c == 0x45 or c == 0x65 then
-			c = match(json, '^[^eE]*[eE][+-]?[0-9]+', pos)
-			if not c then
+
+		if c ~= 0x2C and c ~= 0x5D and c ~= 0x7D and c then -- unusual char is detected
+			if 0x30 <= c and c < 0x3A then
 				decodeerror('invalid number')
 			end
-			pos = pos + #c
+			local pos2 = pos-1
+			local num = match(json, '^.[eE][-+0-9]*', pos2)
+			if num then
+				pos2 = pos2 + #num
+				num = fixedtonumber(num)
+				if not num then
+					decodeerror('invalid number')
+				end
+				pos = pos2
+			end
 		end
+
 		if not mns then
 			return 0.0
 		end
@@ -102,24 +121,30 @@ local function newdecoder()
 		pos = pos-1
 		local num = match(json, '^[0-9]+%.?[0-9]*', pos)
 		local c = byte(num, -1)
-		if c ~= 0x2E then -- check that num is not ended by comma
-			local pos2 = pos + #num
-			c = byte(json, pos2)
-			if c == 0x45 or c == 0x65 then -- e or E?
-				num = match(json, '^[^eE]*[eE][+-]?[0-9]+', pos)
-				if not num then
-					decodeerror('invalid number')
-				end
-				pos2 = pos + #num
-			end
-			local num = fixedtonumber(num) - 0.0
-			if mns then
-				num = -num
-			end
-			pos = pos2
-			return num
+		if c == 0x2E then -- check that num is not ended by comma
+			decodeerror('invalid number')
 		end
-		decodeerror('invalid number')
+
+		local pos2 = pos + #num
+		c = byte(json, pos2)
+		if c == 0x45 or c == 0x65 then -- e or E?
+			num = match(json, '^[^eE]*[eE][-+0-9]*', pos)
+			pos2 = pos + #num
+			num = fixedtonumber(num)
+			if not num then
+				decodeerror('invalid number')
+			end
+		else
+			num = fixedtonumber(num)
+		end
+		pos = pos2
+
+		if mns then
+			num = 0.0-num
+		else
+			num = num-0.0
+		end
+		return num
 	end
 
 	local function f_mns()

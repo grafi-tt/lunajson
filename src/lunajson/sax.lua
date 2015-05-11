@@ -4,6 +4,7 @@ local find = string.find
 local gsub = string.gsub
 local match = string.match
 local sub = string.sub
+local unpack = table.unpack or unpack
 local floor = math.floor
 local tonumber = tonumber
 
@@ -13,6 +14,8 @@ if _VERSION == "Lua 5.3" then
 else
 	genstrlib = require 'lunajson._str_lib'
 end
+
+local function nop() end
 
 local function newparser(src, saxtbl)
 	local json, jsonnxt
@@ -24,8 +27,6 @@ local function newparser(src, saxtbl)
 	local f
 
 	-- initialize
-	local function nop() end
-
 	if type(src) == 'string' then
 		json = src
 		jsonlen = #json
@@ -52,32 +53,32 @@ local function newparser(src, saxtbl)
 		jsonnxt()
 	end
 
-	local sax_startobject = saxtbl.startobject
-	local sax_key = saxtbl.key
-	local sax_endobject = saxtbl.endobject
-	local sax_startarray = saxtbl.startarray
-	local sax_endarray = saxtbl.endarray
-	local sax_string = saxtbl.string
-	local sax_number = saxtbl.number
-	local sax_boolean = saxtbl.boolean
-	local sax_null = saxtbl.null
+	local sax_startobject = saxtbl.startobject or nop
+	local sax_key = saxtbl.key or nop
+	local sax_endobject = saxtbl.endobject or nop
+	local sax_startarray = saxtbl.startarray or nop
+	local sax_endarray = saxtbl.endarray or nop
+	local sax_string = saxtbl.string or nop
+	local sax_number = saxtbl.number or nop
+	local sax_boolean = saxtbl.boolean or nop
+	local sax_null = saxtbl.null or nop
 
 	-- helper
+	local function tryc()
+		local c = byte(json, pos)
+		if not c then
+			jsonnxt()
+			c = byte(json, pos)
+		end
+		return c
+	end
+
 	local function parseerror(errmsg)
 		error("parse error at " .. acc + pos .. ": " .. errmsg)
 	end
 
 	local function tellc()
-		local c = byte(json, pos)
-		if c then
-			return c
-		end
-		jsonnxt()
-		c = byte(json, pos)
-		if c then
-			return c
-		end
-		parseerror("unexpected termination")
+		return tryc() or parseerror("unexpected termination")
 	end
 
 	local function spaces()
@@ -108,21 +109,13 @@ local function newparser(src, saxtbl)
 			end
 			pos = pos+1
 		end
-		if sax_f then
-			return sax_f(ret)
-		else
-			return
-		end
+		return sax_f(ret)
 	end
 
 	local function f_nul()
 		if sub(json, pos, pos+2) == 'ull' then
 			pos = pos+3
-			if sax_null then
-				return sax_null(nil)
-			else
-				return
-			end
+			return sax_null(nil)
 		end
 		return generic_constant('ull', 3, nil, sax_null)
 	end
@@ -130,11 +123,7 @@ local function newparser(src, saxtbl)
 	local function f_fls()
 		if sub(json, pos, pos+3) == 'alse' then
 			pos = pos+4
-			if sax_boolean then
-				return sax_boolean(false)
-			else
-				return
-			end
+			return sax_boolean(false)
 		end
 		return generic_constant('alse', 4, false, sax_boolean)
 	end
@@ -142,11 +131,7 @@ local function newparser(src, saxtbl)
 	local function f_tru()
 		if sub(json, pos, pos+2) == 'rue' then
 			pos = pos+3
-			if sax_boolean then
-				return sax_boolean(true)
-			else
-				return
-			end
+			return sax_boolean(true)
 		end
 		return generic_constant('rue', 3, true, sax_boolean)
 	end
@@ -164,108 +149,159 @@ local function newparser(src, saxtbl)
 	end
 
 	local function generic_number(mns)
-		local newpos
+		local buf = {}
+		local i = 1
 
-		local str = ''
-		repeat
-			_, newpos = find(json, '^[-+0-9.eE]*', pos)
-			str = str .. sub(json, pos, newpos)
-			pos = newpos
-			if pos ~= jsonlen then
-				pos = pos+1
-				break
-			end
-			jsonnxt()
-		until jsonlen == 0
-
-		local c = byte(str)
+		local c = byte(json, pos)
+		pos = pos+1
 		if c == 0x30 then
-			_, newpos = find(str, '^%.[0-9]+', 2)
-			if not newpos then
-				newpos = 1
-			end
-		elseif 0x30 < c and c < 0x3A then
-			_, newpos = find(str, '^[0-9]*%.?[0-9]*', 2)
-			if byte(str, newpos) == 0x2E then
+			buf[i] = c
+			i = i+1
+			c = tryc()
+			pos = pos+1
+			if c and 0x30 <= c and c < 0x3A then
 				parseerror('invalid number')
 			end
 		else
-			parseerror('invalid number')
+			repeat
+				buf[i] = c
+				i = i+1
+				c = tryc()
+				pos = pos+1
+			until not (c and 0x30 <= c and c < 0x3A)
 		end
-
-		c = byte(str, newpos+1)
+		if c == 0x2E then
+			local oldi = i
+			repeat
+				buf[i] = c
+				i = i+1
+				c = tryc()
+				pos = pos+1
+			until not (c and 0x30 <= c and c < 0x3A)
+			if oldi+1 == i then
+				parseerror('invalid number')
+			end
+		end
 		if c == 0x45 or c == 0x65 then
-			_, newpos = find(str, '^[+-]?[0-9]+', newpos+2)
+			repeat
+				buf[i] = c
+				i = i+1
+				c = tryc()
+				pos = pos+1
+			until not (c and ((0x30 <= c and c < 0x3A) or (c == 0x2B or c == 0x2D)))
 		end
+		pos = pos-1
 
-		if newpos ~= #str then
-			parseerror('invalid number')
-		end
-		local num = fixedtonumber(str)
-		if mns then
-			num = -num
-		end
-		if sax_number then
-			return sax_number(num)
-		end
-	end
-
-	local function cont_number(mns, newpos)
-		local expc = byte(json, newpos+1)
-		if expc == 0x45 or expc == 0x65 then -- e or E?
-			_, newpos = find(json, '^[+-]?[0-9]+', newpos+2)
-		end
-		newpos = newpos or jsonlen
-		if newpos ~= jsonlen then
-			local num = fixedtonumber(sub(json, pos-1, newpos))
-			pos = newpos+1
+		local num = char(unpack(buf))
+		num = fixedtonumber(num)
+		if num then
 			if mns then
 				num = -num
 			end
-			if sax_number then
-				return sax_number(num)
-			else
-				return
-			end
+			return sax_number(num)
 		end
-		pos = pos-1
-		return generic_number(mns)
+		parseerror('invalid number')
 	end
 
 	local function f_zro(mns)
-		if byte(json, pos) ~= 0x2E then
-			return cont_number(mns, pos-1)
+		local c = byte(json, pos)
+
+		if c == 0x2E then
+			local num = match(json, '^.[0-9]*', pos) -- skip 0
+			local pos2 = #num
+			if pos2 ~= 1 then
+				pos2 = pos + pos2
+				c = byte(json, pos2)
+				if c == 0x45 or c == 0x65 then
+					num = match(json, '^[^eE]*[eE][-+0-9]*', pos)
+					pos2 = pos + #num
+				end
+				num = fixedtonumber(num)
+				if num and pos2 <= jsonlen then
+					pos = pos2
+					if mns then
+						num = 0.0-num
+					else
+						num = num-0.0
+					end
+					return sax_number(num)
+				end
+			end
+			pos = pos-1
+			return generic_number(mns)
 		end
-		local _, newpos = find(json, '^[0-9]+', pos+1)
-		if newpos then
-			return cont_number(mns, newpos)
+
+		if c ~= 0x2C and c ~= 0x5D and c ~= 0x7D then -- check e or E when unusual char is detected
+			local pos2 = pos
+			pos = pos-1
+			if not c then
+				return generic_number(mns)
+			end
+			if 0x30 <= c and c < 0x3A then
+				parseerror('invalid number')
+			end
+			local num = match(json, '^.[eE][-+0-9]*', pos)
+			if num then
+				pos2 = pos + #num
+				num = fixedtonumber(num)
+				if not num or pos2 > jsonlen then
+					return generic_number(mns)
+				end
+			end
+			pos = pos2
 		end
-		pos = pos-1
-		return generic_number(mns)
+
+		if not mns then
+			return sax_number(0.0)
+		end
+		return sax_number(-0.0)
 	end
 
 	local function f_num(mns)
-		local _, newpos = find(json, '^[0-9]*%.?[0-9]*', pos)
-		if byte(json, newpos) ~= 0x2E then -- check that num is not ended by comma
-			return cont_number(mns, newpos)
-		end
 		pos = pos-1
-		return generic_number(mns)
+		local num = match(json, '^[0-9]+%.?[0-9]*', pos)
+		local c = byte(num, -1)
+		if c == 0x2E then -- check that num is not ended by comma
+			return generic_number(mns)
+		end
+
+		local pos2 = pos + #num
+		c = byte(json, pos2)
+		if c == 0x45 or c == 0x65 then -- e or E?
+			num = match(json, '^[^eE]*[eE][-+0-9]*', pos)
+			pos2 = pos + #num
+			num = fixedtonumber(num)
+			if not num then
+				return generic_number(mns)
+			end
+		else
+			num = fixedtonumber(num)
+		end
+		if pos2 > jsonlen then
+			return generic_number(mns)
+		end
+		pos = pos2
+
+		if mns then
+			num = 0.0-num
+		else
+			num = num-0.0
+		end
+		return sax_number(num)
 	end
 
 	local function f_mns()
-		local c = byte(json, pos)
-		f = dispatcher[c]
-		if f == f_num or f == f_zro then
+		local c = byte(json, pos) or tellc()
+		if c then
 			pos = pos+1
-			return f(true)
-		end
-		if not c then
-			c = tellc()
-			f = dispatcher[c]
-			if f == f_num or f == f_zro then
-				pos = pos+1
-				return f(true)
+			if c > 0x30 then
+				if c < 0x3A then
+					return f_num(true)
+				end
+			else
+				if c > 0x2F then
+					return f_zro(true)
+				end
 			end
 		end
 		parseerror("invalid number")
@@ -312,25 +348,14 @@ local function newparser(src, saxtbl)
 		end
 
 		if iskey then
-			if sax_key then
-				return sax_key(str)
-			else
-				return
-			end
-		else
-			if sax_string then
-				return sax_string(str)
-			else
-				return
-			end
+			return sax_key(str)
 		end
+		return sax_string(str)
 	end
 
 	-- parse arrays
 	local function f_ary()
-		if sax_startarray then
-			sax_startarray()
-		end
+		sax_startarray()
 		spaces()
 		if byte(json, pos) ~= 0x5D then
 			local newpos
@@ -364,16 +389,12 @@ local function newparser(src, saxtbl)
 			end
 		end
 		pos = pos+1
-		if sax_endarray then
-			return sax_endarray()
-		end
+		return sax_endarray()
 	end
 
 	-- parse objects
 	local function f_obj()
-		if sax_startobject then
-			sax_startobject()
-		end
+		sax_startobject()
 		spaces()
 		if byte(json, pos) ~= 0x7D then
 			local newpos
@@ -426,9 +447,7 @@ local function newparser(src, saxtbl)
 			end
 		end
 		pos = pos+1
-		if sax_endobject then
-			return sax_endobject()
-		end
+		return sax_endobject()
 	end
 
 	-- key should be non-nil
@@ -449,15 +468,6 @@ local function newparser(src, saxtbl)
 		f = dispatcher[byte(json, pos)]
 		pos = pos+1
 		f()
-	end
-
-	local function tryc()
-		local c = byte(json, pos)
-		if not c then
-			jsonnxt()
-			c = byte(json, pos)
-		end
-		return c
 	end
 
 	local function read(n)
