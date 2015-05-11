@@ -43,8 +43,6 @@ eval "${lua53}" test-saxread.lua 2>&1
 echo "#### luajit"
 eval "${luajit}" test-saxread.lua 2>&1
 
-exit
-
 echo "# bench"
 for l in all-*-decoder.lua bench-*-decoder.lua; do
 	echo "## $l"
