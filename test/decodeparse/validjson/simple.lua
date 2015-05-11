@@ -1,5 +1,13 @@
-return {
-	{x = 0.0, y = 0.0, aaaaaaaa = true},
-	{x = 1.000001, y = -0.999999, aaaaaaaa = "foo\nbar"},
-	false
-}
+local a = {}
+for i = 0, 9999 do
+	local f = i-0.0
+	local vs = {true, "foo\nbar", i}
+	a[i+1] = {
+		x = 9*f+f/100000,
+		y = -f+f/100000,
+		string = string.format("mmm%xaaaaaaaa", i%1000),
+		value = vs[i%3+1],
+	}
+end
+a[10001] = false
+return a
