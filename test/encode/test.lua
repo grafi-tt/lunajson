@@ -70,16 +70,16 @@ tasks = {
 	end,
 	bench = function()
 		local acc = 0
-		for i = 1, 10 do
+		for i = 1, 100 do
 			local encode = dofile(encoderfile)
 			local t1 = os.clock()
 			encode(data)
 			local t2 = os.clock()
 			local t = t2-t1
-			print(string.format("%2d: %.03fsec", i, t))
+			--print(string.format("%2d: %.03fsec", i, t))
 			acc = acc+t
 		end
-		print(string.format("avg: %.03fsec", acc/10))
+		print(string.format("%.03fsec", acc))
 	end,
 }
 

@@ -2,7 +2,7 @@
 source ../luabin.sh
 
 echo "# valid"
-for l in *-encoder.lua; do
+for l in all-*-encoder.lua; do
 	echo "## $l"
 	for d in validdata/*.lua; do
 		echo "### ${d}"
@@ -18,7 +18,7 @@ for l in *-encoder.lua; do
 done
 
 echo "# bench"
-for l in *-encoder.lua; do
+for l in all-*-encoder.lua bench-*-encoder.lua; do
 	echo "## $l"
 	for d in benchdata/*.lua; do
 		echo "### ${d}"
