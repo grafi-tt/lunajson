@@ -71,7 +71,7 @@ Return the byte of current position as a number. If input is ended, it returns `
 Return the `n`-length string starting from current position, and increase the index by `n`. If the input ends, the returned string and the updated position will be truncated.
 
 ## Benchmark
-Following graphs are the results of the benchmark, decording `[simple.json](test/decodeparse/benchjson/simple.json)` (about 750KiB) 100times and encoding `[simple.lua](test/encode/benchdata/simple.lua)` (the decoded result of `simple.json`) 100times. I conducted benchmarks of lunajson 1.0, [dkjson 2.5](http://dkolf.de/src/dkjson-lua.fsl/home) and [Lua CJSON 2.1.0](http://www.kyne.com.au/~mark/software/lua-cjson.php). Dkjson is a popular JSON encoding/decoding library in Lua, which is written in Lua and optionally uses [lpeg](http://www.inf.puc-rio.br/~roberto/lpeg/) to spped up decoding. Lua CJSON is a JSON encoding/decoding library written in C and inherently fast.
+Following graphs are the results of the benchmark, decording [`simple.json`](test/decodeparse/benchjson/simple.json) (about 750KiB) 100times and encoding [`simple.lua`](test/encode/benchdata/simple.lua) (the decoded result of `simple.json`) 100times. I conducted benchmarks of lunajson 1.0, [dkjson 2.5](http://dkolf.de/src/dkjson-lua.fsl/home) and [Lua CJSON 2.1.0](http://www.kyne.com.au/~mark/software/lua-cjson.php). Dkjson is a popular JSON encoding/decoding library in Lua, which is written in Lua and optionally uses [lpeg](http://www.inf.puc-rio.br/~roberto/lpeg/) to spped up decoding. Lua CJSON is a JSON encoding/decoding library written in C and inherently fast.
 
 ![The graph of decoding benchmark results](test/benchresults/decode.png)
 
