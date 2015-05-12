@@ -76,8 +76,8 @@ tasks = {
 	end,
 	bench = function()
 		local acc = 0
+		local decode = dofile(decoderfile)
 		for i = 1, 100 do
-			local decode = dofile(decoderfile)
 			local t1 = os.clock()
 			decode(json)
 			local t2 = os.clock()

@@ -70,8 +70,8 @@ tasks = {
 	end,
 	bench = function()
 		local acc = 0
+		local encode = dofile(encoderfile)
 		for i = 1, 100 do
-			local encode = dofile(encoderfile)
 			local t1 = os.clock()
 			encode(data)
 			local t2 = os.clock()
