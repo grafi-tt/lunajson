@@ -316,13 +316,23 @@ local function newdecoder()
 	local function decode(json_, pos_, nullv_, arraylen_)
 		json, pos, nullv, arraylen = json_, pos_, nullv_, arraylen_
 
+		pos = pos or 1
 		f, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
 
 		f = dispatcher[byte(json, pos)]
 		pos = pos+1
 		local v = f()
-		return v, pos
+
+		if pos_ then
+			return v, pos
+		else
+			f, pos = find(json, '^[ \n\r\t]*', pos)
+			if pos ~= #json then
+				error('json ended')
+			end
+			return v
+		end
 	end
 
 	return decode
