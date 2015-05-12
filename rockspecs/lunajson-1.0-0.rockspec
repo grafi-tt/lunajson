@@ -1,7 +1,7 @@
-package = 'lunajson'
-version = 1.0
+package = "lunajson"
+version = "1.0-0"
 source = {
-	url = "git://github.com/grafi-tt/luajson.git",
+	url = "git://github.com/grafi-tt/lunajson.git",
 	tag = "1.0"
 }
 description = {
@@ -19,10 +19,10 @@ description = {
 dependencies = {
 	"lua >= 5.1"
 }
-source = {
+build = {
 	type = 'builtin',
 	modules = {
-		['lunajson'] = 'src/luajson.lua',
+		['lunajson'] = 'src/lunajson.lua',
 
 		['lunajson.decoder'] = 'src/lunajson/decoder.lua',
 		['lunajson.encoder'] = 'src/lunajson/encoder.lua',
