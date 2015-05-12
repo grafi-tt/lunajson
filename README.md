@@ -81,7 +81,7 @@ This benchmark is conducted in my desktop machine that equips Core i5 3550K and 
 
 In this benchmark lunajson works well considering that it is implemented only in standard Lua, especially in LuaJIT benchmark. Lunajson also supplies incremental parsing in SAX-style API, therfore you don't have to load whole large JSON files into memory in order to scan the intrested informations from them. I think lunajson is especially useful when non-standard library cannot be used easily or incremental parsing is favored.
 
-## Tokening of number
+## Tokening of numbers
 If you parsing a file from a specific position, there is an ambiguity when a number starts at the position.
 
 For example, if there is `01`, `0.` or `0+` at the position, the parser could only recognize `0` as a valid JSON and returns 0, or reports an error as an invalid number.
