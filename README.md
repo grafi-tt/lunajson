@@ -77,7 +77,7 @@ Following graphs are the results of the benchmark, decording [`simple.json`](tes
 
 ![The graph of encoding benchmark results](test/benchresults/encode.png)
 
-This benchmark is conducted in my desktop machine that equips Core i5 3550K and DDR3-1600 memory. Lua implementations and concerning modules are compiled by GCC 4.9.2 with `-O2 -march=ivybridge -mtune=ivybridge` option. Exact version of Lua interpreters are Lua 5.1.5, Lua 5.2.4, Lua 5.3.0 and LuaJIT 2.0.3. The version of lpeg is 0.12.
+This benchmark is conducted in my desktop machine that equips Core i5 3550K and DDR3-1600 memory. Lua implementations and concerning modules are compiled by GCC 4.9.2 with `-O2 -march=ivybridge -mtune=ivybridge` option. Exact version of Lua interpreters are Lua 5.1.5, Lua 5.2.4, Lua 5.3.0 and LuaJIT 2.0.3. The version of lpeg is 0.12.2.
 
 In this benchmark lunajson works well considering that it is implemented only in standard Lua, especially in LuaJIT benchmark. Lunajson also supplies incremental parsing in SAX-style API, therfore you don't have to load whole large JSON files into memory in order to scan the intrested informations from them. I think lunajson is especially useful when non-standard library cannot be used easily or incremental parsing is favored.
 
