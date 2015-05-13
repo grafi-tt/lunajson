@@ -44,7 +44,7 @@ Create and return a sax-style parser context, which parses `input` or a file spe
 		return s
 	end
 
-`saxtbl` is a table of callbacks. It must have the following functions. Those functions will be called on corresponding events.
+`saxtbl` is a table of callbacks. It can have the following functions. Those functions will be called on corresponding events, if it is in the table.
 
 - startobject()
 - key(s)
