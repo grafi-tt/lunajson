@@ -3,7 +3,7 @@ local byte, char, sub = string.byte, string.char, string.sub
 local setmetatable = setmetatable
 local floor = math.floor
 
-_ENV = nil
+local _ENV = nil
 
 local hextbl = {
 	0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, inf, inf, inf, inf, inf, inf,
