@@ -1222,7 +1222,6 @@ end
 
 return newencoder
 end;
-require("package").preload["lunajson.real"] = function(...)-- <pack lunajson.real> --
 local newdecoder = require 'lunajson.decoder'
 local newencoder = require 'lunajson.encoder'
 local sax = require 'lunajson.sax'
@@ -1234,5 +1233,3 @@ return {
 	newparser = sax.newparser,
 	newfileparser = sax.newfileparser,
 }
-end;
-return require "lunajson.real"

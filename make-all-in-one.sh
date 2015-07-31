@@ -15,6 +15,8 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+W2=true
+
 "$ALLINONE" \
 --shebang			src/lunajson.lua \
 $(if [ -n "$ICHECK" ]; then
@@ -25,12 +27,14 @@ fi) \
 --mod lunajson.sax			src/lunajson/sax.lua \
 --mod lunajson.decoder			src/lunajson/decoder.lua \
 --mod lunajson.encoder			src/lunajson/encoder.lua \
---mod lunajson.real				src/lunajson.lua \
 $(if [ -n "$ICHECK" ]; then
 	echo "--icheck"
 fi) \
---luacode				'return require "lunajson.real"' \
+--code 					src/lunajson.lua \
 > lunajson.lua
+
+#--mod lunajson.real			src/lunajson.lua
+#--luacode				'return require "lunajson.real"'
 
 #"$ALLINONE" --shebang init.lua $( find hate/ -depth -name '*.lua' |while read -r line; do echo "--mod $(echo "$line" | sed 's,\.lua$,,g' | tr / .) ) --code init.lua
 
