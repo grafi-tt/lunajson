@@ -2,39 +2,24 @@
 
 cd -- "$(dirname "$0")" || exit 1
 
-# see https://github.com/tst2005/luamodules-all-in-one-file/
-# wget https://raw.githubusercontent.com/tst2005/luamodules-all-in-one-file/newtry/pack-them-all.lua
-ALLINONE=./aio.lua
-[ -f aio.lua ] || ALLINONE=./thirdparty/git/tst2005/lua-aio/aio.lua
+# see https://github.com/tst2005/lua-aio
+# wget https://raw.githubusercontent.com/tst2005/lua-aio/aio.lua
 
-ICHECK="";
-while [ $# -gt 0 ]; do
-	o="$1"; shift
-	case "$o" in
-		-i) ICHECK=y ;;
-	esac
-done
+LUA_PATH="thirdparty/git/tst2005/lua-?/?.lua;;" \
+lua -l "aio" -e '
+local aio = require "aio"
+local mod, rawmod, shebang, codehead = aio.mod, aio.rawmod, aio.shebang, aio.codehead
+assert( mod and rawmod and shebang and codehead )
 
-W2=true
+aio.mode("raw2")
 
-"$ALLINONE" \
---shebang			src/lunajson.lua \
-$(if [ -n "$ICHECK" ]; then
-	echo "--icheckinit"
-fi) \
---mod lunajson._str_lib			src/lunajson/_str_lib.lua \
---rawmod lunajson._str_lib_lua53	src/lunajson/_str_lib_lua53.lua \
---mod lunajson.sax			src/lunajson/sax.lua \
---mod lunajson.decoder			src/lunajson/decoder.lua \
---mod lunajson.encoder			src/lunajson/encoder.lua \
-$(if [ -n "$ICHECK" ]; then
-	echo "--icheck"
-fi) \
---code 					src/lunajson.lua \
-> lunajson.lua
-
-#--mod lunajson.real			src/lunajson.lua
-#--luacode				'return require "lunajson.real"'
-
-#"$ALLINONE" --shebang init.lua $( find hate/ -depth -name '*.lua' |while read -r line; do echo "--mod $(echo "$line" | sed 's,\.lua$,,g' | tr / .) ) --code init.lua
+shebang(				"src/lunajson.lua")
+mod("lunajson._str_lib",		"src/lunajson/_str_lib.lua")
+rawmod("lunajson._str_lib_lua53", 	"src/lunajson/_str_lib_lua53.lua")
+mod("lunajson.sax", 			"src/lunajson/sax.lua")
+mod("lunajson.decoder",			"src/lunajson/decoder.lua")
+mod("lunajson.encoder",			"src/lunajson/encoder.lua")
+aio.code(				"src/lunajson.lua")
+aio.finish()
+' > lunajson.lua
 

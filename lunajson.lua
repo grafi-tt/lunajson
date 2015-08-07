@@ -1,4 +1,4 @@
-require("package").preload["lunajson._str_lib"] = function(...)-- <pack lunajson._str_lib> --
+do local sources, priorities = {}, {};assert(not sources["lunajson._str_lib"])sources["lunajson._str_lib"]=([===[-- <pack lunajson._str_lib> --
 local inf = math.huge
 local byte, char, sub = string.byte, string.char, string.sub
 local setmetatable = setmetatable
@@ -85,9 +85,8 @@ return function(myerror)
 		surrogateok = surrogateok
 	}
 end
-end;
-do local loadstring=loadstring;(function(name, rawcode)require"package".preload[name]=function(...)return assert(loadstring(rawcode))(...)end;end)("lunajson._str_lib_lua53", ([[
--- <pack lunajson._str_lib_lua53> --
+]===]):gsub('\\([%]%[]===)\\([%]%[])','%1%2')
+assert(not sources["lunajson._str_lib_lua53"])sources["lunajson._str_lib_lua53"]=([===[-- <pack lunajson._str_lib_lua53> --
 local inf = math.huge
 local byte, char, sub = string.byte, string.char, string.sub
 local setmetatable = setmetatable
@@ -107,14 +106,14 @@ setmetatable(hextbl, hextbl)
 
 return function(myerror)
 	local escapetbl = {
-		\['"'\]  = '"',
-		\['\\'\] = '\\',
-		\['/'\]  = '/',
-		\['b'\]  = '\b',
-		\['f'\]  = '\f',
-		\['n'\]  = '\n',
-		\['r'\]  = '\r',
-		\['t'\]  = '\t'
+		['"']  = '"',
+		['\\'] = '\\',
+		['/']  = '/',
+		['b']  = '\b',
+		['f']  = '\f',
+		['n']  = '\n',
+		['r']  = '\r',
+		['t']  = '\t'
 	}
 	escapetbl.__index = function()
 		myerror("invalid escape sequence")
@@ -128,7 +127,7 @@ return function(myerror)
 		if ch == 'u' then
 			local c1, c2, c3, c4 = byte(rest, 1, 4)
 			-- multiplications should not be lshift since cn may be inf
-			local ucode = hextbl\[c1-47\] * 0x1000 + hextbl\[c2-47\] * 0x100 + hextbl\[c3-47\] * 0x10 + hextbl\[c4-47\]
+			local ucode = hextbl[c1-47] * 0x1000 + hextbl[c2-47] * 0x100 + hextbl[c3-47] * 0x10 + hextbl[c4-47]
 			if ucode == inf then
 				myerror("invalid unicode charcode")
 			end
@@ -159,7 +158,7 @@ return function(myerror)
 		if surrogateprev ~= 0 then
 			myerror("invalid surrogate pair")
 		end
-		return (u8 or escapetbl\[ch\]) .. rest
+		return (u8 or escapetbl[ch]) .. rest
 	end
 
 	local function surrogateok()
@@ -171,8 +170,8 @@ return function(myerror)
 		surrogateok = surrogateok
 	}
 end
-]]):gsub('\\([%]%[])','%1'))end
-require("package").preload["lunajson.sax"] = function(...)-- <pack lunajson.sax> --
+]===]):gsub('\\([%]%[]===)\\([%]%[])','%1%2')
+assert(not sources["lunajson.sax"])sources["lunajson.sax"]=([===[-- <pack lunajson.sax> --
 local error = error
 local byte, char, find, gsub, match, sub =
 	string.byte, string.char, string.find, string.gsub, string.match, string.sub
@@ -692,8 +691,8 @@ return {
 	newparser = newparser,
 	newfileparser = newfileparser
 }
-end;
-require("package").preload["lunajson.decoder"] = function(...)-- <pack lunajson.decoder> --
+]===]):gsub('\\([%]%[]===)\\([%]%[])','%1%2')
+assert(not sources["lunajson.decoder"])sources["lunajson.decoder"]=([===[-- <pack lunajson.decoder> --
 local error = error
 local byte, char, find, gsub, match, sub = string.byte, string.char, string.find, string.gsub, string.match, string.sub
 local tonumber = tonumber
@@ -1035,8 +1034,8 @@ local function newdecoder()
 end
 
 return newdecoder
-end;
-require("package").preload["lunajson.encoder"] = function(...)-- <pack lunajson.encoder> --
+]===]):gsub('\\([%]%[]===)\\([%]%[])','%1%2')
+assert(not sources["lunajson.encoder"])sources["lunajson.encoder"]=([===[-- <pack lunajson.encoder> --
 local error = error
 local byte, find, format, gsub, match = string.byte, string.find, string.format,  string.gsub, string.match
 local concat = table.concat
@@ -1221,7 +1220,7 @@ local function newencoder()
 end
 
 return newencoder
-end;
+]===]):gsub('\\([%]%[]===)\\([%]%[])','%1%2')
 local newdecoder = require 'lunajson.decoder'
 local newencoder = require 'lunajson.encoder'
 local sax = require 'lunajson.sax'
@@ -1233,3 +1232,16 @@ return {
 	newparser = sax.newparser,
 	newfileparser = sax.newfileparser,
 }
+local add
+if not pcall(function() add = require"aioruntime".add end) then
+        local loadstring=loadstring; local preload = require"package".preload
+        add = function(name, rawcode)
+		if not preload[name] then
+		        preload[name] = function(...) return loadstring(rawcode)(...) end
+		else
+			print("WARNING: overwrite "..name)
+		end
+        end
+end
+for name, rawcode in pairs(sources) do add(name, rawcode, priorities[name]) end
+end;
