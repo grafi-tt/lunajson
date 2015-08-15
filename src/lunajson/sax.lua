@@ -2,7 +2,7 @@ local error = error
 local byte, char, find, gsub, match, sub =
 	string.byte, string.char, string.find, string.gsub, string.match, string.sub
 local tonumber = tonumber
-local tostring, type, unpack = tonumber, type, table.unpack or unpack
+local tostring, type, unpack = tostring, type, table.unpack or unpack
 
 local genstrlib
 if _VERSION == "Lua 5.3" then
