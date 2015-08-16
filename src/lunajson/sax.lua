@@ -152,140 +152,124 @@ local function newparser(src, saxtbl)
 
 		local c = byte(json, pos)
 		pos = pos+1
-		if c == 0x30 then
+
+		local function nxt()
 			buf[i] = c
 			i = i+1
 			c = tryc()
 			pos = pos+1
-			if c and 0x30 <= c and c < 0x3A then
-				parseerror('invalid number')
-			end
+		end
+
+		if c == 0x30 then
+			nxt()
 		else
-			repeat
-				buf[i] = c
-				i = i+1
-				c = tryc()
-				pos = pos+1
-			until not (c and 0x30 <= c and c < 0x3A)
+			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
 		end
 		if c == 0x2E then
-			local oldi = i
-			repeat
-				buf[i] = c
-				i = i+1
-				c = tryc()
-				pos = pos+1
-			until not (c and 0x30 <= c and c < 0x3A)
-			if oldi+1 == i then
+			nxt()
+			if not (c and 0x30 <= c and c < 0x3A) then
 				parseerror('invalid number')
 			end
+			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
 		end
 		if c == 0x45 or c == 0x65 then
-			repeat
-				buf[i] = c
-				i = i+1
-				c = tryc()
-				pos = pos+1
-			until not (c and ((0x30 <= c and c < 0x3A) or (c == 0x2B or c == 0x2D)))
+			nxt()
+			if c == 0x2B or c == 0x2D then
+				nxt()
+			end
+			if not (c and 0x30 <= c and c < 0x3A) then
+				parseerror('invalid number')
+			end
+			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
 		end
 		pos = pos-1
 
 		local num = char(unpack(buf))
-		num = fixedtonumber(num)
-		if num then
+		num = fixedtonumber(num)-0.0
+		if mns then
+			num = -num
+		end
+		return sax_number(num)
+	end
+
+	-- `0(\.[0-9]*)?([eE][+-]?[0-9]*)?`
+	local function f_zro(mns)
+		repeat
+			local postmp = pos
+			local num
+			local c = byte(json, postmp)
+
+			if c == 0x2E then -- is this `.`?
+				num = match(json, '^.[0-9]*', pos) -- skipping 0
+				local numlen = #num
+				if numlen == 1 then
+					break
+				end
+				postmp = pos + numlen
+				c = byte(json, postmp)
+			end
+
+			if c == 0x45 or c == 0x65 then -- is this e or E?
+				local numexp = match(json, '^[^eE]*[eE][-+]?[0-9]+', pos)
+				if not numexp then
+					break
+				end
+				if num then -- since `0e.*` is always 0.0, ignore those
+					num = numexp
+				end
+				postmp = pos + #numexp
+			end
+
+			if postmp > jsonlen then
+				break
+			end
+			pos = postmp
+			if num then
+				num = fixedtonumber(num)
+			else
+				num = 0.0
+			end
 			if mns then
 				num = -num
 			end
 			return sax_number(num)
-		end
-		parseerror('invalid number')
-	end
+		until true
 
-	local function f_zro(mns)
-		local c = byte(json, pos)
-
-		if c == 0x2E then
-			local num = match(json, '^.[0-9]*', pos) -- skip 0
-			local pos2 = #num
-			if pos2 ~= 1 then
-				pos2 = pos + pos2
-				c = byte(json, pos2)
-				if c == 0x45 or c == 0x65 then
-					num = match(json, '^[^eE]*[eE][-+0-9]*', pos)
-					pos2 = pos + #num
-				end
-				num = fixedtonumber(num)
-				if num and pos2 <= jsonlen then
-					pos = pos2
-					if mns then
-						num = 0.0-num
-					else
-						num = num-0.0
-					end
-					return sax_number(num)
-				end
-			end
-			pos = pos-1
-			return generic_number(mns)
-		end
-
-		if c ~= 0x2C and c ~= 0x5D and c ~= 0x7D then -- check e or E when unusual char is detected
-			local pos2 = pos
-			pos = pos-1
-			if not c then
-				return generic_number(mns)
-			end
-			if 0x30 <= c and c < 0x3A then
-				parseerror('invalid number')
-			end
-			local num = match(json, '^.[eE][-+0-9]*', pos)
-			if num then
-				pos2 = pos + #num
-				num = fixedtonumber(num)
-				if not num or pos2 > jsonlen then
-					return generic_number(mns)
-				end
-			end
-			pos = pos2
-		end
-
-		if not mns then
-			return sax_number(0.0)
-		end
-		return sax_number(-0.0)
-	end
-
-	local function f_num(mns)
 		pos = pos-1
-		local num = match(json, '^[0-9]+%.?[0-9]*', pos)
-		local c = byte(num, -1)
-		if c == 0x2E then -- check that num is not ended by comma
-			return generic_number(mns)
-		end
+		return generic_number(mns)
+	end
 
-		local pos2 = pos + #num
-		c = byte(json, pos2)
-		if c == 0x45 or c == 0x65 then -- e or E?
-			num = match(json, '^[^eE]*[eE][-+0-9]*', pos)
-			pos2 = pos + #num
-			num = fixedtonumber(num)
-			if not num then
-				return generic_number(mns)
+	-- `[1-9][0-9]*(\.[0-9]*)?([eE][+-]?[0-9]*)?`
+	local function f_num(mns)
+		repeat
+			pos = pos-1
+			local num = match(json, '^.[0-9]*%.?[0-9]*', pos)
+			if byte(num, -1) == 0x2E then
+				break
 			end
-		else
-			num = fixedtonumber(num)
-		end
-		if pos2 > jsonlen then
-			return generic_number(mns)
-		end
-		pos = pos2
+			local postmp = pos + #num
+			local c = byte(json, postmp)
 
-		if mns then
-			num = 0.0-num
-		else
-			num = num-0.0
-		end
-		return sax_number(num)
+			if c == 0x45 or c == 0x65 then -- e or E?
+				num = match(json, '^[^eE]*[eE][-+]?[0-9]+', pos)
+				if not num then
+					break
+				end
+				postmp = pos + #num
+			end
+
+			if postmp > jsonlen then
+				break
+			end
+			pos = postmp
+			num = fixedtonumber(num)-0.0
+			if mns then
+				num = -num
+			end
+			return sax_number(num)
+		until true
+
+		return generic_number(mns)
 	end
 
 	local function f_mns()

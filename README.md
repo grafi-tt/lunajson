@@ -80,10 +80,3 @@ Following graphs are the results of the benchmark, decoding [`simple.json`](test
 This benchmark is conducted in my desktop machine that equips Core i5 3550K and DDR3-1600 memory. Lua implementations and concerning modules are compiled by GCC 4.9.2 with `-O2 -march=ivybridge -mtune=ivybridge` options. The versions of lua implementations are the newest official releases at the time of benchmark. The version of lpeg is 0.12.2.
 
 In this benchmark Lunajson performs well considering that it is implemented only in standard Lua, especially in LuaJIT 2.0 benchmark. Lunajson also supplies incremental parsing in a SAX-style API, therfore you don't have to load whole large JSON files into memory in order to scan the information you're interested in from them. Lunajson is especially useful when non-standard libraries cannot be used easily or incremental parsing is favored.
-
-## Tokenizing of numbers
-If you are parsing a file from a specific position, there is an ambiguity when a number starts at the position.
-
-For example, if there is `01`, `0.` or `0+` at the position, the parser could only recognize `0` as a valid JSON and returns 0, or reports an error as an invalid number.
-
-In lunajson, first the longest string matches to `-?[0-9]+(.[0-9]*)?([eE][-+0-9]*)?` (in a regular expression) is tokenized as a number, then this number is checked whether it conforms the specification. Therefore, `01` and `0.` are rejected immediately as a invalid number and `0+` are not rejected. I think this is somewhat reasonable behavior.
