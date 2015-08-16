@@ -165,7 +165,7 @@ local function newdecoder()
 	local f_str_surrogateok = f_str_lib.surrogateok
 	local f_str_subst = f_str_lib.subst
 
-	local f_str_keycache = {}
+	local f_str_keycache = setmetatable({}, {__mode="v"})
 
 	local function f_str(iskey)
 		local newpos = pos-2
