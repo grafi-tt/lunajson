@@ -3,6 +3,8 @@ local byte, char, find, gsub, match, sub = string.byte, string.char, string.find
 local tonumber = tonumber
 local tostring, setmetatable = tostring, setmetatable
 
+-- The function that interprets JSON strings is separated into another file so as to
+-- use bitwise operation to speedup unicode codepoints processing on Lua 5.3.
 local genstrlib
 if _VERSION == "Lua 5.3" then
 	genstrlib = require 'lunajson._str_lib_lua53'
@@ -15,22 +17,28 @@ local _ENV = nil
 local function newdecoder()
 	local json, pos, nullv, arraylen
 
-	local dispatcher
-	-- it is temporary for dispatcher[c] and
-	-- dummy for 1st return value of find
-	local f
+	-- `f` is the temporary for dispatcher[c] and
+	-- the dummy for the first return value of `find`
+	local dispatcher, f
 
-	-- helper
+	--[[
+		Helper
+	--]]
 	local function decodeerror(errmsg)
 		error("parse error at " .. pos .. ": " .. errmsg)
 	end
 
-	-- parse error
+	--[[
+		Invalid
+	--]]
 	local function f_err()
 		decodeerror('invalid value')
 	end
 
-	-- parse constants
+	--[[
+		Constants
+	--]]
+	-- null
 	local function f_nul()
 		if sub(json, pos, pos+2) == 'ull' then
 			pos = pos+3
@@ -39,6 +47,7 @@ local function newdecoder()
 		decodeerror('invalid value')
 	end
 
+	-- false
 	local function f_fls()
 		if sub(json, pos, pos+3) == 'alse' then
 			pos = pos+4
@@ -47,6 +56,7 @@ local function newdecoder()
 		decodeerror('invalid value')
 	end
 
+	-- true
 	local function f_tru()
 		if sub(json, pos, pos+2) == 'rue' then
 			pos = pos+3
@@ -55,7 +65,12 @@ local function newdecoder()
 		decodeerror('invalid value')
 	end
 
-	-- parse numbers
+	--[[
+		Numbers
+		Conceptually, the longest prefix that matches to `-?(0|[1-9][0-9]*)(\.[0-9]*)?([eE][+-]?[0-9]*)?`
+		(in regexp) is captured as a number and its conformance to the JSON spec is checked.
+	--]]
+	-- deal with non-standard locales
 	local radixmark = match(tostring(0.5), '[^0-9]')
 	local fixedtonumber = tonumber
 	if radixmark ~= '.' then
@@ -143,6 +158,7 @@ local function newdecoder()
 		decodeerror('invalid number')
 	end
 
+	-- skip minus sign
 	local function f_mns()
 		local c = byte(json, pos)
 		if c then
@@ -160,11 +176,14 @@ local function newdecoder()
 		decodeerror('invalid number')
 	end
 
-	-- parse strings
+	--[[
+		Strings
+	--]]
 	local f_str_lib = genstrlib(decodeerror)
-	local f_str_surrogateok = f_str_lib.surrogateok
-	local f_str_subst = f_str_lib.subst
+	local f_str_surrogateok = f_str_lib.surrogateok -- whether codepoints for surrogate pair are correctly paired
+	local f_str_subst = f_str_lib.subst -- the function passed to gsub that interprets escapes
 
+	-- caching interpreted keys for speed
 	local f_str_keycache = setmetatable({}, {__mode="v"})
 
 	local function f_str(iskey)
@@ -172,43 +191,46 @@ local function newdecoder()
 		local pos2 = pos
 		local c1, c2
 		repeat
-			newpos = find(json, '"', pos2, true)
+			newpos = find(json, '"', pos2, true) -- search '"'
 			if not newpos then
 				decodeerror("unterminated string")
 			end
 			pos2 = newpos+1
-			while true do
+			while true do -- skip preceding '\\'s
 				c1, c2 = byte(json, newpos-2, newpos-1)
 				if c2 ~= 0x5C or c1 ~= 0x5C then
 					break
 				end
 				newpos = newpos-2
 			end
-		until c2 ~= 0x5C
+		until c2 ~= 0x5C -- check '"' is not preceded by '\'
 
 		local str = sub(json, pos, pos2-2)
 		pos = pos2
 
-		if iskey then
+		if iskey then -- check key cache
 			local str2 = f_str_keycache[str]
 			if str2 then
 				return str2
 			end
 		end
 		local str2 = str
-		if find(str2, '\\', 1, true) then
-			str2 = gsub(str2, '\\(.)([^\\]*)', f_str_subst)
+		if find(str2, '\\', 1, true) then -- check if backslash occurs
+			str2 = gsub(str2, '\\(.)([^\\]*)', f_str_subst) -- interpret escapes
 			if not f_str_surrogateok() then
 				decodeerror("invalid surrogate pair")
 			end
 		end
-		if iskey then
+		if iskey then -- commit key cache
 			f_str_keycache[str] = str2
 		end
 		return str2
 	end
 
-	-- parse arrays
+	--[[
+		Arrays, Objects
+	--]]
+	-- array
 	local function f_ary()
 		local ary = {}
 
@@ -216,17 +238,17 @@ local function newdecoder()
 		pos = pos+1
 
 		local i = 0
-		if byte(json, pos) ~= 0x5D then
+		if byte(json, pos) ~= 0x5D then -- check closing bracket ']', that consists an empty array
 			local newpos = pos-1
 			repeat
 				i = i+1
-				f = dispatcher[byte(json,newpos+1)]
+				f = dispatcher[byte(json,newpos+1)] -- parse value
 				pos = newpos+2
 				ary[i] = f()
-				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos) -- check comma
 			until not newpos
 
-			f, newpos = find(json, '^[ \n\r\t]*%]', pos)
+			f, newpos = find(json, '^[ \n\r\t]*%]', pos) -- check closing bracket
 			if not newpos then
 				decodeerror("no closing bracket of an array")
 			end
@@ -234,30 +256,32 @@ local function newdecoder()
 		end
 
 		pos = pos+1
-		if arraylen then
+		if arraylen then -- commit the length of the array if `arraylen` is set
 			ary[0] = i
 		end
 		return ary
 	end
 
-	-- parse objects
+	-- objects
 	local function f_obj()
 		local obj = {}
 
 		f, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
-		if byte(json, pos) ~= 0x7D then
+		if byte(json, pos) ~= 0x7D then -- check the closing bracket '}', that consists an empty object
 			local newpos = pos-1
 
 			repeat
 				pos = newpos+1
-				if byte(json, pos) ~= 0x22 then
+				if byte(json, pos) ~= 0x22 then -- check '"'
 					decodeerror("not key")
 				end
 				pos = pos+1
-				local key = f_str(true)
+				local key = f_str(true) -- parse key
 
 				-- optimized for compact json
+				-- c1, c2 == ':', <the first char of the value> or
+				-- c1, c2, c3 == ':', ' ', <the first char of the value>
 				f = f_err
 				do
 					local c1, c2, c3  = byte(json, pos, pos+3)
@@ -270,13 +294,13 @@ local function newdecoder()
 						f = dispatcher[c2]
 					end
 				end
-				if f == f_err then
+				if f == f_err then -- read a colon and arbitrary number of spaces
 					f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
 					if not newpos then
 						decodeerror("no colon after a key")
 					end
 				end
-				f = dispatcher[byte(json, newpos+1)]
+				f = dispatcher[byte(json, newpos+1)] -- parse value
 				pos = newpos+2
 				obj[key] = f()
 				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
@@ -293,6 +317,10 @@ local function newdecoder()
 		return obj
 	end
 
+	--[[
+		The jump table to dispatch a parser for a value, indexed by the code of the value's first char.
+		Nil key means the end of json.
+	--]]
 	dispatcher = {
 		       f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
@@ -304,12 +332,14 @@ local function newdecoder()
 		f_err, f_err, f_err, f_err, f_tru, f_err, f_err, f_err, f_err, f_err, f_err, f_obj, f_err, f_err, f_err, f_err,
 	}
 	dispatcher[0] = f_err
-	dispatcher.__index = function() -- byte is nil
+	dispatcher.__index = function()
 		decodeerror("unexpected termination")
 	end
 	setmetatable(dispatcher, dispatcher)
 
-	-- run decoder
+	--[[
+		run decoder
+	--]]
 	local function decode(json_, pos_, nullv_, arraylen_)
 		json, pos, nullv, arraylen = json_, pos_, nullv_, arraylen_
 
