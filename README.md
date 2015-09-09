@@ -11,10 +11,10 @@ Or you can download source manually and copy `src/*` into somewhere on your `pac
 
 ## Simple Usage
 	local lunajson = require 'lunajson'
-	local jsonstr = '{"Hello"=["lunajson",1.0]}'
+	local jsonstr = '{"Hello":["lunajson",1.5]}'
 	local t = lunajson.decode(jsonstr)
-	print(t.Hello[2]) -- prints 1.0
-	print(lunajson.encode(t)) -- prints {"Hello"=["lunajson",1.0]}
+	print(t.Hello[2]) -- prints 1.5
+	print(lunajson.encode(t)) -- prints {"Hello":["lunajson",1.5]}
 
 ## API
 ### lunajson.decode(jsonstr, [pos, [nullv, [arraylen]]])
