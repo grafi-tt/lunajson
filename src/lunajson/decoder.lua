@@ -15,7 +15,7 @@ end
 local _ENV = nil
 
 local function newdecoder()
-	local json, pos, nullv, arraylen
+	local json, pos, nullv, arraylen, newobj
 
 	-- `f` is the temporary for dispatcher[c] and
 	-- the dummy for the first return value of `find`
@@ -228,7 +228,7 @@ local function newdecoder()
 	--]]
 	-- array
 	local function f_ary()
-		local ary = {}
+		local ary = {} -- no issue with lua numerical index
 
 		f, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
@@ -260,7 +260,7 @@ local function newdecoder()
 
 	-- objects
 	local function f_obj()
-		local obj = {}
+		local obj = newobj and newobj() or {}
 
 		f, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
@@ -336,8 +336,8 @@ local function newdecoder()
 	--[[
 		run decoder
 	--]]
-	local function decode(json_, pos_, nullv_, arraylen_)
-		json, pos, nullv, arraylen = json_, pos_, nullv_, arraylen_
+	local function decode(json_, pos_, nullv_, arraylen_, newobj_)
+		json, pos, nullv, arraylen, newobj = json_, pos_, nullv_, arraylen_, newobj_
 
 		pos = pos or 1
 		f, pos = find(json, '^[ \n\r\t]*', pos)
