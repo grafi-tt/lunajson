@@ -1,4 +1,4 @@
-lua_dists="lua-5.1.5 lua-5.2.4 lua-5.3.4 LuaJIT-2.0.5"
+lua_dists="`cat "${0%/*}/../ci/lua_dists.txt"`"
 
 . ./lua_base.sh
 

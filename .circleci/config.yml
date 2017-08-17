@@ -1,0 +1,16 @@
+version: 2.0
+
+jobs:
+  test:
+    machine:
+      enabled: true
+    steps:
+      - checkout
+      - restore_cache:
+          key: v1-{{ checksum "ci/lua_dists.txt" }}
+      - run: cp ci/lua_base.sh.example lua_base.sh
+      - run: ci/prepare_lua.sh
+      - save_cache:
+          key: v1-{{ checksum "ci/lua_dists.txt" }}
+          paths: ~/lua
+      - run: test/run.sh
