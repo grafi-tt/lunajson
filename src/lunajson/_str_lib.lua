@@ -70,13 +70,16 @@ return function(myerror)
 			end
 		end
 		if surrogateprev ~= 0 then
+			surrogateprev = 0
 			myerror("invalid surrogate pair")
 		end
 		return (u8 or escapetbl[ch]) .. rest
 	end
 
 	local function surrogateok()
-		return surrogateprev == 0
+		local v = surrogateprev == 0
+		surrogateprev = 0
+		return v
 	end
 
 	return {
