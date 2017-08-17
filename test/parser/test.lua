@@ -1,10 +1,13 @@
-local lunajson = require 'lunajson'
+local lj = require 'lunajson'
+local util = require 'util'
+
+
 local saxtbl = {}
 
 for round = 1, 2 do
 	local bufsize = round == 1 and 64 or 1
 
-	local fp = io.open('test-saxread-2json.dat')
+	local fp = util.open('test.dat')
 	local function input()
 		local s = fp:read(bufsize)
 		if not s then
@@ -13,7 +16,7 @@ for round = 1, 2 do
 		end
 		return s
 	end
-	local parser = lunajson.newparser(input, saxtbl)
+	local parser = lj.newparser(input, saxtbl)
 
 	if (parser.tryc() ~= string.byte('a')) then
 		print(parser.tryc())

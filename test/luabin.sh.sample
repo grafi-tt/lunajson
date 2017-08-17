@@ -1,6 +1,0 @@
-#!/bin/sh
-export LUA_PATH="../../src/?.lua;$HOME/dkjson/?.lua;"
-lua51="LUA_CPATH='$HOME/lua-5.1.5/lpeg-0.12.2/?.so;$HOME/lua-5.1.5/lua-cjson-2.1.0/?.so;' ~/lua-5.1.5/src/lua"
-lua52="LUA_CPATH='$HOME/lua-5.2.4/lpeg-0.12.2/?.so;$HOME/lua-5.2.4/lua-cjson-2.1.0/?.so;' ~/lua-5.2.4/src/lua"
-lua53="LUA_CPATH='$HOME/lua-5.3.0/lpeg-0.12.2/?.so;$HOME/lua-5.3.0/lua-cjson-2.1.0/?.so;' ~/lua-5.3.0/src/lua"
-luajit="LUA_CPATH='$HOME/LuaJIT-2.0.3/lpeg-0.12.2/?.so;$HOME/LuaJIT-2.0.3/lua-cjson-2.1.0/?.so;' ~/LuaJIT-2.0.3/src/luajit"

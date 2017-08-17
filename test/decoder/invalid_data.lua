@@ -1,0 +1,16 @@
+return {
+	'hex',
+	'leadingperiod',
+	'notfalse',
+	'plusminus',
+	'surrogate-double1st',
+	'surrogate-double2nd',
+	'surrogate-notpair1',
+	'surrogate-notpair2',
+	'surrogate-only1st',
+	'surrogate-only2nd',
+	'trailinge',
+	'trailingperiod1',
+	'trailingperiod2',
+	'unicode-16',
+}
