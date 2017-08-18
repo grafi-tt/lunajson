@@ -1,6 +1,7 @@
 return {
-	'cjson',
+	'lunajson',
+	'lunajson_sax',
 	'dkjson_lpeg',
 	'dkjson_pure',
-	'lunajson',
+	'cjson',
 }

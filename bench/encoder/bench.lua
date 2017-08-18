@@ -15,8 +15,8 @@ function bench(encode, fn)
 end
 
 
-local encoders = loader('encoders.lua')
-local data = loader('data.lua')
+local encoders = util.load('encoders.lua')
+local data = util.load('data.lua')
 
 for _, encoder in ipairs(encoders) do
 	print(encoder .. ': ')

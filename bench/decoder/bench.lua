@@ -3,7 +3,7 @@ local util = require 'util'
 
 function bench(decode, fn)
 	local fp = util.open('data/' .. fn .. '.json')
-	local json = fp:read('a')
+	local json = fp:read('*a')
 	fp:close()
 	local acc = 0
 	for i = 1, 100 do
@@ -17,8 +17,8 @@ function bench(decode, fn)
 end
 
 
-local decoders = loader('decoders.lua')
-local data = loader('data.lua')
+local decoders = util.load('decoders.lua')
+local data = util.load('data.lua')
 
 for _, decoder in ipairs(decoders) do
 	print(decoder  .. ':')

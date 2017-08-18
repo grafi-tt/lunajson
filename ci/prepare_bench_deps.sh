@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. "${0%/*}lua_dists.sh"
+. "${0%/*}/lua_dists.sh"
 
 
 lpeg_archive="lpeg-1.0.1.tar.gz"
@@ -10,8 +10,8 @@ install_lpeg() {
 	tar xvf "$lpeg_archive" -C "$lua_dist" || exit $?
 	cd "${lua_dist}/${lpeg_archive%.tar.gz}"
 	sed -e "s/^LUADIR.*/LUADIR = ..\\/src/" makefile > makefile.new
-	mv makefile.new makefile
-	case "$platform"
+	mv -f makefile.new makefile
+	case "$platform" in
 		linux | freebsd )
 			make linux || exit $?;;
 		macosx )
@@ -19,6 +19,7 @@ install_lpeg() {
 		* ) exit 1;;
 	esac
 	mv lpeg.so "$lua_lib" || exit $?
+	cd ../..
 }
 
 
@@ -29,13 +30,14 @@ install_cjson() {
 	tar xvf "$cjson_archive" -C "$lua_dist" || exit $?
 	cd "${lua_dist}/${cjson_archive%.tar.gz}"
 	sed -e "s/^LUA_INCLUDE_DIR.*/LUA_INCLUDE_DIR = ..\\/src/" Makefile > Makefile.new
-	mv Makefile.new Makefile
+	mv -f Makefile.new Makefile
 	if [ "$platform" = "macosx" ]; then
 		sed -e "s/^CJSON_LDFLAGS.*/CJSON_LDFLAGS = -bundle -undefined dynamic_lookup/" Makefile > Makefile.new
 		mv Makefile.new Makefile
 	fi
 	make || exit $?
 	mv cjson.so "$lua_lib" || exit $?
+	cd ../..
 }
 
 
@@ -49,16 +51,18 @@ install_dkjson() {
 
 cd "${lua_base}" || exit 1
 
-for dep in "lpeg cjson dkjson"; do
+for dep in lpeg cjson dkjson; do
 	update=n
-	if [ ! -e "`echo "\$${dep}_archive"`" ]; then
-		wget "`echo "\$${dep}_url"`"
+	eval dep_archive='"$'${dep}_archive'"'
+	eval dep_url='"$'${dep}_url'"'
+	if [ ! -e "$dep_archive" ]; then
+		wget "$dep_url"
 		update=y
 	fi
-	for lua_dist in lua_dists; do
+	for lua_dist in $lua_dists; do
 		set_lua_vars
 		mkdir -p "$lua_lib"
-		if [ "$update" = y -o ! ( -e "${lua_lib}/${dep}.so" -o -e "${lua_lib}/${dep}.lua" ) ]; then
+		if [ "$update" = y -o ! '(' -e "${lua_lib}/${dep}.so" -o -e "${lua_lib}/${dep}.lua" ')' ]; then
 			"install_${dep}"
 		fi
 	done
