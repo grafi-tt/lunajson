@@ -1,16 +1,10 @@
-local error = error
-local byte, char, find, gsub, match, sub = string.byte, string.char, string.find, string.gsub, string.match, string.sub
-local tonumber = tonumber
-local tostring, type, unpack = tostring, type, table.unpack or unpack
-
--- The function that interprets JSON strings is separated into another file so as to
--- use bitwise operation to speedup unicode codepoints processing on Lua 5.3.
-local genstrlib
-if _VERSION == "Lua 5.3" then
-	genstrlib = require 'lunajson._str_lib_lua53'
-else
-	genstrlib = require 'lunajson._str_lib'
-end
+local error, setmetatable, tonumber, tostring =
+      error, setmetatable, tonumber, tostring
+local byte, char, find, gsub, match, sub =
+      string.byte, string.char, string.find, string.gsub, string.match, string.sub
+local floor, inf =
+      math.floor, math.huge
+local type, unpack = type, table.unpack or unpack
 
 local _ENV = nil
 
@@ -303,9 +297,85 @@ local function newparser(src, saxtbl)
 	--[[
 		Strings
 	--]]
-	local f_str_lib = genstrlib(parseerror)
-	local f_str_surrogateok = f_str_lib.surrogateok -- whether codepoints for surrogate pair are correctly paired
-	local f_str_subst = f_str_lib.subst -- the function passed to gsub that interprets escapes
+	local f_str_hextbl = {
+		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, inf, inf, inf, inf, inf, inf,
+		inf, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, inf, inf, inf, inf, inf, inf, inf, inf, inf,
+		inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf,
+		inf, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, inf, inf, inf, inf, inf, inf, inf, inf, inf,
+	}
+	f_str_hextbl.__index = function()
+		return inf
+	end
+	setmetatable(f_str_hextbl, f_str_hextbl)
+
+	local f_str_escapetbl = {
+		['"']  = '"',
+		['\\'] = '\\',
+		['/']  = '/',
+		['b']  = '\b',
+		['f']  = '\f',
+		['n']  = '\n',
+		['r']  = '\r',
+		['t']  = '\t'
+	}
+	f_str_escapetbl.__index = function()
+		decodeerror("invalid escape sequence")
+	end
+	setmetatable(f_str_escapetbl, f_str_escapetbl)
+
+	local f_str_surrogate_prev = 0
+	local function f_str_subst(ch, rest)
+		-- 0.000003814697265625 = 2^-18
+		-- 0.000244140625 = 2^-12
+		-- 0.015625 = 2^-6
+		local u8
+		if ch == 'u' then
+			local c1, c2, c3, c4 = byte(rest, 1, 4)
+			local ucode = f_str_hextbl[c1-47] * 0x1000 +
+			              f_str_hextbl[c2-47] * 0x100 +
+			              f_str_hextbl[c3-47] * 0x10 +
+			              f_str_hextbl[c4-47]
+			if ucode == inf then
+				myerror("invalid unicode charcode")
+			end
+			rest = sub(rest, 5)
+			if ucode < 0x80 then -- 1byte
+				u8 = char(ucode)
+			elseif ucode < 0x800 then -- 2byte
+				u8 = char(0xC0 + floor(ucode * 0.015625),
+				          0x80 + ucode % 0x40)
+			elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
+				u8 = char(0xE0 + floor(ucode * 0.000244140625),
+				          0x80 + floor(ucode * 0.015625) % 0x40,
+				          0x80 + ucode % 0x40)
+			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
+				if f_str_surrogate_prev == 0 then
+					f_str_surrogate_prev = ucode
+					if rest == '' then
+						return ''
+					end
+				end
+			else -- surrogate pair 2nd
+				if f_str_surrogate_prev == 0 then
+					f_str_surrogate_prev = 1
+				else
+					ucode = 0x10000 +
+					        (f_str_surrogate_prev - 0xD800) * 0x400 +
+					        (ucode - 0xDC00)
+					f_str_surrogate_prev = 0
+					u8 = char(0xF0 + floor(ucode * 0.000003814697265625),
+					          0x80 + floor(ucode * 0.000244140625) % 0x40,
+					          0x80 + floor(ucode * 0.015625) % 0x40,
+					          0x80 + ucode % 0x40)
+				end
+			end
+		end
+		if f_str_surrogate_prev ~= 0 then
+			f_str_surrogate_prev = 0
+			decodeerror("invalid surrogate pair")
+		end
+		return (u8 or f_str_escapetbl[ch]) .. rest
+	end
 
 	local function f_str(iskey)
 		local pos2 = pos
@@ -337,8 +407,9 @@ local function newparser(src, saxtbl)
 
 		if bs then -- check if backslash occurs
 			str = gsub(str, '\\(.)([^\\]*)', f_str_subst) -- interpret escapes
-			if not f_str_surrogateok() then
-				parseerror("invalid surrogate pair")
+			if f_str_surrogate_prev ~= 0 then
+				f_str_surrogate_prev = 0
+				decodeerror("invalid surrogate pair")
 			end
 		end
 
