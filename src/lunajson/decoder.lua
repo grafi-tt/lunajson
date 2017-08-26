@@ -83,6 +83,7 @@ local function newdecoder()
 	local function f_zro(mns)
 		local postmp = pos
 		local num
+		local numret = 0
 		local c = byte(json, postmp)
 		if not c then
 			return error_number()
@@ -90,35 +91,35 @@ local function newdecoder()
 
 		if c == 0x2E then -- is this `.`?
 			num = match(json, '^.[0-9]*', pos) -- skipping 0
-			local numlen = #num
-			if numlen == 1 then
+			c = #num
+			if c == 1 then
 				return error_number()
 			end
-			postmp = pos + numlen
+			postmp = pos + c
 			c = byte(json, postmp)
 		end
 
 		if c == 0x45 or c == 0x65 then -- is this e or E?
-			local numexp = match(json, '^[^eE]*[eE][-+]?[0-9]+', pos)
-			if not numexp then
+			c = match(json, '^[^eE]*[eE][-+]?[0-9]+', pos)
+			if not c then
 				return error_number()
 			end
-			if num then -- since `0e.*` is always 0.0, ignore those
-				num = numexp
+			if num then
+				num = c
+			else -- `0e.*` is always 0.0
+				numret = 0.0
 			end
-			postmp = pos + #numexp
+			postmp = pos + #c
 		end
 
 		pos = postmp
 		if num then
-			num = fixedtonumber(num)
-		else
-			num = 0.0
+			numret = fixedtonumber(num)
 		end
 		if mns then
-			num = -num
+			numret = -numret
 		end
-		return num
+		return numret
 	end
 
 	-- `[1-9][0-9]*(\.[0-9]*)?([eE][+-]?[0-9]*)?`
@@ -140,7 +141,7 @@ local function newdecoder()
 		end
 
 		pos = postmp
-		num = fixedtonumber(num)-0.0
+		num = fixedtonumber(num)
 		if mns then
 			num = -num
 		end
