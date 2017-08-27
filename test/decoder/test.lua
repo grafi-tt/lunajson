@@ -1,4 +1,4 @@
-local util = require('util')
+local util = require 'util'
 
 
 local function isomorphic(u, v)
@@ -51,10 +51,16 @@ local function test_valid(decode, fn)
 	local fp = util.open(fn .. '.json')
 	local json = fp:read('*a')
 	fp:close()
-	local v = decode(json, nullv)
 
-	local ans = util.load(fn .. '.lua')
-	isomorphic(ans, v)
+	local function check()
+		local v = decode(json, nullv)
+		local ans = util.load(fn .. '.lua')
+		isomorphic(ans, v)
+	end
+	local ok, err = pcall(check)
+	if not ok then
+		return string.format('%q', err)
+	end
 end
 
 local function test_invalid(decode, fn)
@@ -62,8 +68,9 @@ local function test_invalid(decode, fn)
 	local json = fp:read('*a')
 	fp:close()
 
-	if pcall(decode, json, nullv) then
-		error("not errored")
+	local ok, err = pcall(decode, json, nullv)
+	if ok then
+		return '"not errored"'
 	end
 end
 
@@ -72,17 +79,34 @@ local decoders = util.load('decoders.lua')
 local valid_data = util.load('valid_data.lua')
 local invalid_data = util.load('invalid_data.lua')
 
+local iserr = false
+io.write('decode:\n')
 for _, decoder in ipairs(decoders) do
-	print(decoder .. ':')
+	io.write('  ' .. decoder .. ':\n')
 	local decode = util.load('decode/' .. decoder .. '.lua')
 	for _, fn in ipairs(valid_data) do
-		print('  ' .. fn)
+		io.write('    ' .. fn .. ': ')
 		fn = 'valid_data/' .. fn
-		test_valid(decode, fn)
+		local err = test_valid(decode, fn)
+		if err then
+			iserr = true
+			io.write(err .. '\n')
+		else
+			io.write('ok\n')
+		end
 	end
 	for _, fn in ipairs(invalid_data) do
-		print('  ' .. fn)
+		io.write('    ' .. fn  .. ': ')
 		fn = 'invalid_data/' .. fn
 		test_invalid(decode, fn)
+		local err = test_invalid(decode, fn)
+		if err then
+			iserr = true
+			io.write(err .. '\n')
+		else
+			io.write('ok\n')
+		end
 	end
 end
+
+return iserr

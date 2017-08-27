@@ -2,9 +2,8 @@ local lj = require 'lunajson'
 local util = require 'util'
 
 
-local saxtbl = {}
-
-for round = 1, 2 do
+local function test(round)
+	local saxtbl = {}
 	local bufsize = round == 1 and 64 or 1
 
 	local fp = util.open('test.dat')
@@ -20,42 +19,55 @@ for round = 1, 2 do
 
 	if (parser.tryc() ~= string.byte('a')) then
 		print(parser.tryc())
-		error("1st not a")
+		return "1st not a"
 	end
 	if (parser.read(3) ~= ("abc")) then
-		error("not abc")
+		return "not abc"
 	end
 	if (parser.read(75) ~= ("abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc")) then
-		error("not abc*25")
+		return "not abc*25"
 	end
 	if (parser.tellpos() ~= 79) then
-		error("not read 78")
+		return "not read 78"
 	end
 	parser.run()
 	if parser.tellpos() ~= 139 then
-		error("1st json not end at 139")
+		return "1st json not end at 139"
 	end
     if parser.read(8) ~= "  mmmmmm" then
-		error("not __mmmmmm")
+		return "not __mmmmmm"
 	end
 	parser.run()
 	if parser.tryc() ~= string.byte('+') then
-		error("not +")
+		return "not +"
 	end
 	if parser.read(200) ~= '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++' then
-		error("not +*")
+		return "not +*"
 	end
 	if parser.tellpos() ~= 276 then
 		print(parser.tellpos())
-		error("not last pos")
+		return "not last pos"
 	end
 	if parser.tryc() then
-		error("not ended")
+		return "not ended"
 	end
 	if parser.read(10) ~= ""  then
-		error("not empty")
+		return "not empty"
 	end
 	if parser.tellpos() ~= 276 then
-		error("last pos moving")
+		return "last pos moving"
+	end
+end
+
+
+io.write('parse: ')
+for round = 1, 2 do
+	local err = test(round)
+	if err then
+		io.write(err .. '\n')
+		return true
+	else
+		io.write('ok\n')
+		return false
 	end
 end
