@@ -1,10 +1,15 @@
-local ipairs = ipairs
-local pairs = pairs
-local tostring = tostring
-local type = type
+local error, pairs, setmetatable, tonumber, tostring, type =
+      error, pairs, setmetatable, tonumber, tostring, type
+local mtype = math.type or function(n) return 'float' end
 local format = string.format
+local concat = table.concat
+
+_ENV = nil
+
+
 local huge = 1/0
 local tiny = -1/0
+
 
 local function dump(v)
 	local builder = {}
@@ -25,7 +30,7 @@ local function dump(v)
 		depth = depth+1
 		depth8 = depth8+1
 		if depth8 > 8 then
-			depth8 = 0
+			depth8 = 1
 		end
 		var = nextvar
 		nextvar = vars[depth8+1]
@@ -67,75 +72,53 @@ local function dump(v)
 	local tablefun, tbl
 
 	local function tableelem(k, v)
-		do
-			local vt = type(v)
-			if vt ~= 'table' then
-				local e = tbl[vt](v)
-				builder[i] = var2
-				builder[i+1] = k
-				builder[i+2] = ']='
-				builder[i+3] = e
-				builder[i+4] = '\n'
-				i = i+5
-				return
-			end
+		local vt = type(v)
+		if vt ~= 'table' then
+			local e = tbl[vt](v)
+			builder[i] = var2
+			builder[i+1] = k
+			builder[i+2] = ']='
+			builder[i+3] = e
+			builder[i+4] = '\n'
+			i = i+5
+			return
 		end
-		do
-			local olddepth = visited[v]
-			if olddepth then
-				builder[i] = var2
-				builder[i+1] = k
-				builder[i+2] = ']='
-				if olddepth >= view then
-					builder[i+3] = vars[olddepth%8]
-				else
-					builder[i+3] = 'stack['..olddepth..']'
-				end
-				builder[i+4] = '\n'
-				i = i+5
-				return
-			end
-		end
-		do
-			local oldvar2 = var2
-			incdepth()
-			visited[v] = depth
-			if kt == nextvar then
-				builder[i] = 'vtmp={}\n'
-				builder[i+1] = oldvar2
-				builder[i+2] = k
-				builder[i+3] = ']=vtmp\n'
-				builder[i+4] = var
-				builder[i+5] = '=vtmp\n'
-				i = i+6
+
+		local olddepth = visited[v]
+		if olddepth then
+			builder[i] = var2
+			builder[i+1] = k
+			builder[i+2] = ']='
+			if olddepth >= view then
+				builder[i+3] = vars[(olddepth-1)%8+1]
 			else
-				builder[i] = var
-				builder[i+1] = '={}\n'
-				builder[i+2] = oldvar2
-				builder[i+3] = k
-				builder[i+4] = ']='
-				builder[i+5] = var
-				builder[i+6] = '\n'
-				i = i+7
+				builder[i+3] = 'stack['..olddepth..']'
 			end
+			builder[i+4] = '\n'
+			i = i+5
+			return
 		end
+
+		local oldvar2 = var2
+		incdepth()
+		visited[v] = depth
+		builder[i] = var
+		builder[i+1] = '={}\n'
+		builder[i+2] = oldvar2
+		builder[i+3] = k
+		builder[i+4] = ']='
+		builder[i+5] = var
+		builder[i+6] = '\n'
+		i = i+7
 		tablefun(v)
 		visited[v] = nil
 		decdepth()
 	end
 
 	function tablefun(o)
-		local l = 0
-		for j, v in ipairs(o) do
-			l = j
-			tableelem(j, v)
-		end
 		for k, v in pairs(o) do
-			local kt = type(k)
-			if kt ~= 'number' or  k < 1 or k > l then
-				k = tbl[kt](k)
-				tableelem(k, v)
-			end
+			k = tbl[type(k)](k)
+			tableelem(k, v)
 		end
 	end
 
@@ -146,7 +129,7 @@ local function dump(v)
 				local olddepth = visited[o]
 				if olddepth then
 					if olddepth >= view then
-						return vars[olddepth%8]
+						return vars[(olddepth-1)%8+1]
 					else
 						return 'stack['..olddepth..']'
 					end
@@ -167,7 +150,11 @@ local function dump(v)
 		end,
 		number = function(n)
 			if tiny < n and n < huge then
-				return format('%.17g', n)
+				if mtype(n) == 'float' then
+					return format('%.17g', n)
+				else
+					return tonumber(n)
+				end
 			elseif n == huge then
 				return '1/0'
 			elseif n == tiny then
@@ -186,11 +173,13 @@ local function dump(v)
 	i = i+1
 	for j = 1, 8 do
 		builder[i] = vars[j]
-		builder[i+1] = ','
+		if j < 8 then
+			builder[i+1] = ','
+		else
+			builder[i+1] = '\n'
+		end
 		i = i+2
 	end
-	builder[i] = 'vtmp\n'
-	i = i+1
 	local stackdecl = i
 	builder[i] = ""
 	i = i+1
@@ -200,10 +189,9 @@ local function dump(v)
 	i = i+2
 	if usestack then
 		builder[stackdecl] = 'local stack={}\n'
-		i = i+1
 	end
 
-	return table.concat(builder)
+	return concat(builder)
 end
 
 return dump
