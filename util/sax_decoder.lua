@@ -52,12 +52,7 @@ return function(gen, nv)
 			add(ary)
 		end
 		saxtbl.string = add
-		saxtbl.number = function(n)
-			current[key] = n-0.0
-			if type(key) == 'number' then
-				key = key+1
-			end
-		end
+		saxtbl.number = add
 		saxtbl.boolean = add
 		saxtbl.null = add
 	end

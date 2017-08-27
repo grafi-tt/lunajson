@@ -195,7 +195,7 @@ local function newparser(src, saxtbl)
 		pos = pos-1
 
 		local num = char(unpack(buf))
-		num = fixedtonumber(num)-0.0
+		num = fixedtonumber(num)
 		if mns then
 			num = -num
 		end
