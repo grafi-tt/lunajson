@@ -1,9 +1,11 @@
 #!/bin/sh
 
-. "${0%/*}/../ci/lua_dists.sh"
+. "${0%/*}/../ci/lua_impls.sh"
 
 
-for lua_dist in $lua_dists; do
+for lua_impl in $lua_impls; do
 	set_lua_vars
+	echo "---"
+	echo "lua_impl: ${lua_impl}"
 	"${lua_base}/$lua_bin" "${0%/*}/bench.lua"
 done

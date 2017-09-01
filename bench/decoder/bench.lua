@@ -20,11 +20,12 @@ end
 local decoders = util.load('decoders.lua')
 local data = util.load('data.lua')
 
+io.write('decode:\n')
 for _, decoder in ipairs(decoders) do
-	print(decoder  .. ':')
+	io.write('  ' .. decoder .. ':\n')
 	local decode = util.load('decode/' .. decoder .. '.lua')
 	for _, fn in ipairs(data) do
 		local t =  bench(decode, fn)
-		print('  ' .. fn .. ': ' .. string.format("%.03f", t))
+		io.write(string.format('    %s: %.03f\n', fn, t))
 	end
 end

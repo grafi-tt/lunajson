@@ -18,11 +18,12 @@ end
 local encoders = util.load('encoders.lua')
 local data = util.load('data.lua')
 
+io.write('encode:\n')
 for _, encoder in ipairs(encoders) do
-	print(encoder .. ': ')
+	io.write('  ' .. encoder .. ':\n')
 	local encode = util.load('encode/' .. encoder .. '.lua')
 	for _, fn in ipairs(data) do
 		local t =  bench(encode, fn)
-		print('  ' .. fn .. ':' .. string.format("%.03f", t))
+		io.write(string.format('    %s: %.03f\n', fn, t))
 	end
 end
