@@ -204,10 +204,6 @@ local function newdecoder()
 
 	local f_str_surrogate_prev = 0
 	local function f_str_subst(ch, rest)
-		-- 0.000003814697265625 = 2^-18
-		-- 0.000244140625 = 2^-12
-		-- 0.015625 = 2^-6
-		local u8
 		if ch == 'u' then
 			local c1, c2, c3, c4 = byte(rest, 1, 4)
 			local ucode = f_str_hextbl[c1-47] * 0x1000 +
@@ -219,14 +215,17 @@ local function newdecoder()
 			end
 			rest = sub(rest, 5)
 			if ucode < 0x80 then -- 1byte
-				u8 = char(ucode)
+				return char(ucode) .. rest
 			elseif ucode < 0x800 then -- 2byte
-				u8 = char(0xC0 + floor(ucode * 0.015625),
-				          0x80 + ucode % 0x40)
+				c1 = floor(ucode / 0x40)
+				c2 = ucode - c1 * 0x40
+				return char(0xC0 + c1, 0x80 + c2) .. rest
 			elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
-				u8 = char(0xE0 + floor(ucode * 0.000244140625),
-				          0x80 + floor(ucode * 0.015625) % 0x40,
-				          0x80 + ucode % 0x40)
+				c1 = floor(ucode / 0x1000)
+				ucode = ucode - c1 * 0x1000
+				c2 = floor(ucode / 0x40)
+				c3 = ucode - c2 * 0x40
+				return char(0xE0 + c1, 0x80 + c2, 0x80 + c3) .. rest
 			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
 				if f_str_surrogate_prev == 0 then
 					f_str_surrogate_prev = ucode
@@ -242,10 +241,13 @@ local function newdecoder()
 					        (f_str_surrogate_prev - 0xD800) * 0x400 +
 					        (ucode - 0xDC00)
 					f_str_surrogate_prev = 0
-					u8 = char(0xF0 + floor(ucode * 0.000003814697265625),
-					          0x80 + floor(ucode * 0.000244140625) % 0x40,
-					          0x80 + floor(ucode * 0.015625) % 0x40,
-					          0x80 + ucode % 0x40)
+					c1 = floor(ucode / 0x40000)
+					ucode = ucode - c1 * 0x40000
+					c2 = floor(ucode / 0x1000)
+					ucode = ucode - c2 * 0x1000
+					c3 = floor(ucode / 0x40)
+					c4 = ucode - c3 * 0x40
+					return char(0xF0 + c1, 0x80 + c2, 0x80 + c3, 0x80 + c4) .. rest
 				end
 			end
 		end
@@ -253,7 +255,7 @@ local function newdecoder()
 			f_str_surrogate_prev = 0
 			decodeerror("invalid surrogate pair")
 		end
-		return (u8 or f_str_escapetbl[ch]) .. rest
+		return f_str_escapetbl[ch] .. rest
 	end
 
 	-- caching interpreted keys for speed
