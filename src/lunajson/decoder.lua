@@ -4,6 +4,8 @@ local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
 local floor, inf =
       math.floor, math.huge
+local mininteger, tointeger =
+      math.mininteger or nil, math.tointeger or nil
 
 local _ENV = nil
 
@@ -141,11 +143,16 @@ local function newdecoder()
 		end
 
 		pos = postmp
-		num = fixedtonumber(num)
+		c = fixedtonumber(num)
 		if mns then
-			num = -num
+			c = -c
+			if c == mininteger then
+				if not find(num, '[^0-9]') then
+					c = mininteger
+				end
+			end
 		end
-		return num
+		return c
 	end
 
 	-- skip minus sign

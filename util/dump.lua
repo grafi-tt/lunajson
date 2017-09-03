@@ -1,7 +1,8 @@
 local error, pairs, setmetatable, tonumber, tostring, type =
       error, pairs, setmetatable, tonumber, tostring, type
 local mtype = math.type or function(n) return 'float' end
-local format = string.format
+local find, format =
+      string.find, string.format
 local concat = table.concat
 
 _ENV = nil
@@ -151,7 +152,11 @@ local function dump(v)
 		number = function(n)
 			if tiny < n and n < huge then
 				if mtype(n) == 'float' then
-					return format('%.17g', n)
+					n = format('%.17g', n)
+					if not find(n, '[^-0-9]') then
+						n = n .. '.0'
+					end
+					return n
 				else
 					return tonumber(n)
 				end

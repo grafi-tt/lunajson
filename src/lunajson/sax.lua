@@ -4,9 +4,12 @@ local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
 local floor, inf =
       math.floor, math.huge
+local mininteger, tointeger =
+      math.mininteger or nil, math.tointeger or nil
 local type, unpack = type, table.unpack or unpack
 
 local _ENV = nil
+
 
 local function nop() end
 
@@ -159,6 +162,7 @@ local function newparser(src, saxtbl)
 	local function generic_number(mns)
 		local buf = {}
 		local i = 1
+		local is_int = true
 
 		local c = byte(json, pos)
 		pos = pos+1
@@ -176,6 +180,7 @@ local function newparser(src, saxtbl)
 			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
 		end
 		if c == 0x2E then
+			is_int = false
 			nxt()
 			if not (c and 0x30 <= c and c < 0x3A) then
 				parseerror('invalid number')
@@ -183,6 +188,7 @@ local function newparser(src, saxtbl)
 			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
 		end
 		if c == 0x45 or c == 0x65 then
+			is_int = false
 			nxt()
 			if c == 0x2B or c == 0x2D then
 				nxt()
@@ -198,6 +204,9 @@ local function newparser(src, saxtbl)
 		num = fixedtonumber(num)
 		if mns then
 			num = -num
+			if num == mininteger and is_int then
+				num = mininteger
+			end
 		end
 		return sax_number(num)
 	end
@@ -270,11 +279,16 @@ local function newparser(src, saxtbl)
 			return generic_number(mns)
 		end
 		pos = postmp
-		num = fixedtonumber(num)
+		c = fixedtonumber(num)
 		if mns then
-			num = -num
+			c = -c
+			if c == mininteger then
+				if match(num, '^[0-9]*$') then
+					c = tointeger(c)
+				end
+			end
 		end
-		return sax_number(num)
+		return sax_number(c)
 	end
 
 	-- skip minus sign

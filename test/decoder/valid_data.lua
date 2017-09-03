@@ -5,6 +5,8 @@ return {
 	'backslash',
 	'emptyarray',
 	'emptyobject',
+	'mininteger',
+	'mininteger-f',
 	'regarded-as-rest-digits',
 	'regarded-as-rest-eperiod',
 	'regarded-as-rest-period',

@@ -37,6 +37,14 @@ local function isomorphic(u, v)
 				isomorphic(u[j], v[k])
 			until false
 		else
+			if math.type then
+				s = math.type(u)
+				t = math.type(v)
+				if s ~= t then
+					error('different values: ' .. tostring(s) .. tostring(u) .. ' and ' .. tostring(t) .. tostring(v))
+
+				end
+			end
 			if u ~= v then
 				error('different values: ' .. tostring(u) .. ' and ' .. tostring(v))
 			end
@@ -55,7 +63,7 @@ local function test_valid(decode, fn)
 	local function check()
 		local v = decode(json, nullv)
 		local ans = util.load(fn .. '.lua')
-		isomorphic(ans, v)
+		isomorphic(v, ans)
 	end
 	local ok, err = pcall(check)
 	if not ok then
