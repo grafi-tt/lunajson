@@ -73,9 +73,9 @@ Return the `n`-length string starting from current position, and increase the in
 ## Benchmark
 Following graphs are the results of the benchmark, decoding [`simple.json`](test/decodeparse/benchjson/simple.json) (about 750KiB) 100 times and encoding [`simple.lua`](test/encode/benchdata/simple.lua) (the decoded result of `simple.json`) 100 times. I conducted benchmarks of lunajson 1.0, [dkjson 2.5](http://dkolf.de/src/dkjson-lua.fsl/home) and [Lua CJSON 2.1.0](http://www.kyne.com.au/~mark/software/lua-cjson.php). Dkjson is a popular JSON encoding/decoding library in Lua, which is written in Lua and optionally uses [lpeg](http://www.inf.puc-rio.br/~roberto/lpeg/) to spped up decoding. Lua CJSON is a JSON encoding/decoding library implemented in C and is inherently fast.
 
-![The graph of decoding benchmark results](test/benchresults/decode.png)
+![The graph of decoding benchmark results](result/decode-simple.png)
 
-![The graph of encoding benchmark results](test/benchresults/encode.png)
+![The graph of encoding benchmark results](result/encode-simple.png)
 
 This benchmark is conducted in my desktop machine that equips Core i5 3550K and DDR3-1600 memory. Lua implementations and concerning modules are compiled by GCC 4.9.2 with `-O2 -march=ivybridge -mtune=ivybridge` options. The versions of lua implementations are the newest official releases at the time of benchmark. The version of lpeg is 0.12.2.
 

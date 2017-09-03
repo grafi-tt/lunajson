@@ -1,0 +1,80 @@
+---
+lua_impl: lua-5.1.5
+decode:
+  lunajson:
+    simple: 9.774
+  lunajson_sax:
+    simple: 12.059
+  dkjson_lpeg:
+    simple: 9.016
+  dkjson_pure:
+    simple: 9.032
+  cjson:
+    simple: 1.143
+encode:
+  lunajson:
+    simple: 9.535
+  dkjson:
+    simple: 14.390
+  cjson:
+    simple: 1.993
+---
+lua_impl: lua-5.2.4
+decode:
+  lunajson:
+    simple: 10.440
+  lunajson_sax:
+    simple: 12.561
+  dkjson_lpeg:
+    simple: 8.469
+  dkjson_pure:
+    simple: 8.483
+  cjson:
+    simple: 1.199
+encode:
+  lunajson:
+    simple: 8.949
+  dkjson:
+    simple: 15.204
+  cjson:
+    simple: 2.036
+---
+lua_impl: lua-5.3.4
+decode:
+  lunajson:
+    simple: 9.021
+  lunajson_sax:
+    simple: 10.494
+  dkjson_lpeg:
+    simple: 7.819
+  dkjson_pure:
+    simple: 7.821
+  cjson:
+    simple: 1.166
+encode:
+  lunajson:
+    simple: 8.771
+  dkjson:
+    simple: 14.689
+  cjson:
+    simple: 2.027
+---
+lua_impl: LuaJIT-2.0.5
+decode:
+  lunajson:
+    simple: 5.166
+  lunajson_sax:
+    simple: 6.812
+  dkjson_lpeg:
+    simple: 5.416
+  dkjson_pure:
+    simple: 5.415
+  cjson:
+    simple: 0.855
+encode:
+  lunajson:
+    simple: 5.760
+  dkjson:
+    simple: 8.675
+  cjson:
+    simple: 1.935

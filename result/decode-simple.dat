@@ -1,0 +1,5 @@
+"" "lunajson decoder" "lunajson SAX" "dkjson with lpeg" "dkjson w/o lpeg" "Lua CJSON"
+"lua-5.1.5" 9.774 12.059 9.016 9.032 1.143
+"lua-5.2.4" 10.44 12.561 8.469 8.483 1.199
+"lua-5.3.4" 9.021 10.494 7.819 7.821 1.166
+"LuaJIT-2.0.5" 5.166 6.812 5.416 5.415 0.855

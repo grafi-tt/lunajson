@@ -1,5 +1,5 @@
 return {
+	'lunajson',
 	'dkjson',
 	'cjson',
-	'lunajson',
 }
