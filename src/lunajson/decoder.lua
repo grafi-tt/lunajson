@@ -9,6 +9,7 @@ local byte, char, find, gsub, match, sub =
 
 local _ENV = nil
 
+
 local function newdecoder()
 	local json, pos, nullv, arraylen
 
@@ -62,8 +63,9 @@ local function newdecoder()
 
 	--[[
 		Numbers
-		Conceptually, the longest prefix that matches to `-?(0|[1-9][0-9]*)(\.[0-9]*)?([eE][+-]?[0-9]*)?`
-		(in regexp) is captured as a number and its conformance to the JSON spec is checked.
+		Conceptually, the longest prefix that matches to
+		`-?(0|[1-9][0-9]*)(\.[0-9]*)?([eE][+-]?[0-9]*)?` (in regexp) is
+		captured as a number and its conformance to the JSON spec is checked.
 	--]]
 	-- deal with non-standard locales
 	local radixmark = match(tostring(0.5), '[^0-9]')
@@ -91,8 +93,8 @@ local function newdecoder()
 			return error_number()
 		end
 
-		if c == 0x2E then -- is this `.`?
-			num = match(json, '^.[0-9]*', pos) -- skipping 0
+		if c == 0x2E then  -- is this `.`?
+			num = match(json, '^.[0-9]*', pos)  -- skipping 0
 			c = #num
 			if c == 1 then
 				return error_number()
@@ -101,14 +103,14 @@ local function newdecoder()
 			c = byte(json, postmp)
 		end
 
-		if c == 0x45 or c == 0x65 then -- is this e or E?
+		if c == 0x45 or c == 0x65 then  -- is this e or E?
 			c = match(json, '^[^eE]*[eE][-+]?[0-9]+', pos)
 			if not c then
 				return error_number()
 			end
 			if num then
 				num = c
-			else -- `0e.*` is always 0.0
+			else  -- `0e.*` is always 0.0
 				numret = 0.0
 			end
 			postmp = pos + #c
@@ -128,13 +130,13 @@ local function newdecoder()
 	local function f_num(mns)
 		pos = pos-1
 		local num = match(json, '^.[0-9]*%.?[0-9]*', pos)
-		if byte(num, -1) == 0x2E then
+		if byte(num, -1) == 0x2E then  -- `.`?
 			return error_number()
 		end
 		local postmp = pos + #num
 		local c = byte(json, postmp)
 
-		if c == 0x45 or c == 0x65 then -- e or E?
+		if c == 0x45 or c == 0x65 then  -- e or E?
 			num = match(json, '^[^eE]*[eE][-+]?[0-9]+', pos)
 			if not num then
 				return error_number()
@@ -177,10 +179,13 @@ local function newdecoder()
 		Strings
 	--]]
 	local f_str_hextbl = {
-		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, inf, inf, inf, inf, inf, inf,
-		inf, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, inf, inf, inf, inf, inf, inf, inf, inf, inf,
-		inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf,
-		inf, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, inf, inf, inf, inf, inf, inf, inf, inf, inf,
+		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
+		0x8, 0x9, inf, inf, inf, inf, inf, inf,
+		inf, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, inf,
+		inf, inf, inf, inf, inf, inf, inf, inf,
+		inf, inf, inf, inf, inf, inf, inf, inf,
+		inf, inf, inf, inf, inf, inf, inf, inf,
+		inf, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
 	}
 	f_str_hextbl.__index = function()
 		return inf
@@ -211,12 +216,12 @@ local function newdecoder()
 			        f_str_hextbl[c3-47] * 0x10 +
 			        f_str_hextbl[c4-47]
 			if ucode ~= inf then
-				if ucode < 0x80 then -- 1byte
+				if ucode < 0x80 then  -- 1byte
 					if rest then
 						return char(ucode, rest)
 					end
 					return char(ucode)
-				elseif ucode < 0x800 then -- 2byte
+				elseif ucode < 0x800 then  -- 2bytes
 					c1 = floor(ucode / 0x40)
 					c2 = ucode - c1 * 0x40
 					c1 = c1 + 0xC0
@@ -225,7 +230,7 @@ local function newdecoder()
 						return char(c1, c2, rest)
 					end
 					return char(c1, c2)
-				elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
+				elseif ucode < 0xD800 or 0xE000 <= ucode then  -- 3bytes
 					c1 = floor(ucode / 0x1000)
 					ucode = ucode - c1 * 0x1000
 					c2 = floor(ucode / 0x40)
@@ -237,7 +242,7 @@ local function newdecoder()
 						return char(c1, c2, c3, rest)
 					end
 					return char(c1, c2, c3)
-				elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
+				elseif 0xD800 <= ucode and ucode < 0xDC00 then  -- surrogate pair 1st
 					if f_str_surrogate_prev == 0 then
 						f_str_surrogate_prev = ucode
 						if not rest then
@@ -247,7 +252,7 @@ local function newdecoder()
 					end
 					f_str_surrogate_prev = 0
 					decodeerror("two contiguous 1st surrogate pair bytes")
-				else -- surrogate pair 2nd
+				else  -- surrogate pair 2nd
 					if f_str_surrogate_prev ~= 0 then
 						ucode = 0x10000 +
 								(f_str_surrogate_prev - 0xD800) * 0x400 +
@@ -288,38 +293,43 @@ local function newdecoder()
 		local pos2 = pos
 		local c1, c2
 		repeat
-			newpos = find(json, '"', pos2, true) -- search '"'
+			newpos = find(json, '"', pos2, true)  -- search '"'
 			if not newpos then
 				decodeerror("unterminated string")
 			end
 			pos2 = newpos+1
-			while true do -- skip preceding '\\'s
+			while true do  -- skip preceding '\\'s
 				c1, c2 = byte(json, newpos-2, newpos-1)
 				if c2 ~= 0x5C or c1 ~= 0x5C then
 					break
 				end
 				newpos = newpos-2
 			end
-		until c2 ~= 0x5C -- check '"' is not preceded by '\'
+		until c2 ~= 0x5C  -- leave if '"' is not preceded by '\'
 
 		local str = sub(json, pos, pos2-2)
 		pos = pos2
 
-		if iskey then -- check key cache
+		if iskey then  -- check key cache
 			local str2 = f_str_keycache[str]
 			if str2 then
 				return str2
 			end
 		end
 		local str2 = str
-		if find(str2, '\\', 1, true) then -- check if backslash occurs
-			str2 = gsub(str2, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst) -- interpret escapes
+		if find(str2, '\\', 1, true) then  -- check whether a backslash exists
+			-- We need to grab 4 characters after the escape char,
+			-- for encoding unicode codepoint to UTF-8.
+			-- As we need to ensure that every first surrogate pair byte is
+			-- immediately followed by second one, we grab upto 5 characters and
+			-- check the last for this purpose.
+			str2 = gsub(str2, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst)
 			if f_str_surrogate_prev ~= 0 then
 				f_str_surrogate_prev = 0
 				decodeerror("1st surrogate pair byte not continued by 2nd")
 			end
 		end
-		if iskey then -- commit key cache
+		if iskey then  -- commit key cache
 			f_str_keycache[str] = str2
 		end
 		return str2
@@ -336,17 +346,17 @@ local function newdecoder()
 		pos = pos+1
 
 		local i = 0
-		if byte(json, pos) ~= 0x5D then -- check closing bracket ']', that consists an empty array
+		if byte(json, pos) ~= 0x5D then  -- check closing bracket ']' which means the array empty
 			local newpos = pos-1
 			repeat
 				i = i+1
-				f = dispatcher[byte(json,newpos+1)] -- parse value
+				f = dispatcher[byte(json,newpos+1)]  -- parse value
 				pos = newpos+2
 				ary[i] = f()
-				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos) -- check comma
+				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)  -- check comma
 			until not newpos
 
-			f, newpos = find(json, '^[ \n\r\t]*%]', pos) -- check closing bracket
+			f, newpos = find(json, '^[ \n\r\t]*%]', pos)  -- check closing bracket
 			if not newpos then
 				decodeerror("no closing bracket of an array")
 			end
@@ -366,16 +376,16 @@ local function newdecoder()
 
 		f, pos = find(json, '^[ \n\r\t]*', pos)
 		pos = pos+1
-		if byte(json, pos) ~= 0x7D then -- check the closing bracket '}', that consists an empty object
+		if byte(json, pos) ~= 0x7D then  -- check closing bracket '}' which means the object empty
 			local newpos = pos-1
 
 			repeat
 				pos = newpos+1
-				if byte(json, pos) ~= 0x22 then -- check '"'
+				if byte(json, pos) ~= 0x22 then  -- check '"'
 					decodeerror("not key")
 				end
 				pos = pos+1
-				local key = f_str(true) -- parse key
+				local key = f_str(true)  -- parse key
 
 				-- optimized for compact json
 				-- c1, c2 == ':', <the first char of the value> or
@@ -392,13 +402,13 @@ local function newdecoder()
 						f = dispatcher[c2]
 					end
 				end
-				if f == f_err then -- read a colon and arbitrary number of spaces
+				if f == f_err then  -- read a colon and arbitrary number of spaces
 					f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
 					if not newpos then
 						decodeerror("no colon after a key")
 					end
 				end
-				f = dispatcher[byte(json, newpos+1)] -- parse value
+				f = dispatcher[byte(json, newpos+1)]  -- parse value
 				pos = newpos+2
 				obj[key] = f()
 				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
@@ -416,18 +426,27 @@ local function newdecoder()
 	end
 
 	--[[
-		The jump table to dispatch a parser for a value, indexed by the code of the value's first char.
+		The jump table to dispatch a parser for a value,
+		indexed by the code of the value's first char.
 		Nil key means the end of json.
 	--]]
 	dispatcher = {
-		       f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
-		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
-		f_err, f_err, f_str, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_mns, f_err, f_err,
-		f_zro, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_num, f_err, f_err, f_err, f_err, f_err, f_err,
-		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
-		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_ary, f_err, f_err, f_err, f_err,
-		f_err, f_err, f_err, f_err, f_err, f_err, f_fls, f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_nul, f_err,
-		f_err, f_err, f_err, f_err, f_tru, f_err, f_err, f_err, f_err, f_err, f_err, f_obj, f_err, f_err, f_err, f_err,
+		       f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_str, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_mns, f_err, f_err,
+		f_zro, f_num, f_num, f_num, f_num, f_num, f_num, f_num,
+		f_num, f_num, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_ary, f_err, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_fls, f_err,
+		f_err, f_err, f_err, f_err, f_err, f_err, f_nul, f_err,
+		f_err, f_err, f_err, f_err, f_tru, f_err, f_err, f_err,
+		f_err, f_err, f_err, f_obj, f_err, f_err, f_err, f_err,
 	}
 	dispatcher[0] = f_err
 	dispatcher.__index = function()

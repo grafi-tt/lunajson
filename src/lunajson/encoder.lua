@@ -16,6 +16,7 @@ end
 
 local _ENV = nil
 
+
 local function newencoder()
 	local v, nullv
 	local i, builder, visited
