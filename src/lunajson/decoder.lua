@@ -1,11 +1,11 @@
 local error, setmetatable, tonumber, tostring =
       error, setmetatable, tonumber, tostring
-local byte, char, find, gsub, match, sub =
-      string.byte, string.char, string.find, string.gsub, string.match, string.sub
 local floor, inf =
       math.floor, math.huge
 local mininteger, tointeger =
       math.mininteger or nil, math.tointeger or nil
+local byte, char, find, gsub, match, sub =
+      string.byte, string.char, string.find, string.gsub, string.match, string.sub
 
 local _ENV = nil
 

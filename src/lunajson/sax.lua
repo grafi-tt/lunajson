@@ -1,11 +1,12 @@
 local error, setmetatable, tonumber, tostring =
       error, setmetatable, tonumber, tostring
-local byte, char, find, gsub, match, sub =
-      string.byte, string.char, string.find, string.gsub, string.match, string.sub
 local floor, inf =
       math.floor, math.huge
 local mininteger, tointeger =
       math.mininteger or nil, math.tointeger or nil
+local byte, char, find, gsub, match, sub =
+      string.byte, string.char, string.find, string.gsub, string.match, string.sub
+
 local type, unpack = type, table.unpack or unpack
 
 local _ENV = nil
@@ -339,57 +340,81 @@ local function newparser(src, saxtbl)
 	setmetatable(f_str_escapetbl, f_str_escapetbl)
 
 	local f_str_surrogate_prev = 0
-	local function f_str_subst(ch, rest)
-		-- 0.000003814697265625 = 2^-18
-		-- 0.000244140625 = 2^-12
-		-- 0.015625 = 2^-6
-		local u8
+	local function f_str_subst(ch, ucode)
 		if ch == 'u' then
-			local c1, c2, c3, c4 = byte(rest, 1, 4)
-			local ucode = f_str_hextbl[c1-47] * 0x1000 +
-			              f_str_hextbl[c2-47] * 0x100 +
-			              f_str_hextbl[c3-47] * 0x10 +
-			              f_str_hextbl[c4-47]
-			if ucode == inf then
-				myerror("invalid unicode charcode")
-			end
-			rest = sub(rest, 5)
-			if ucode < 0x80 then -- 1byte
-				u8 = char(ucode)
-			elseif ucode < 0x800 then -- 2byte
-				u8 = char(0xC0 + floor(ucode * 0.015625),
-				          0x80 + ucode % 0x40)
-			elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
-				u8 = char(0xE0 + floor(ucode * 0.000244140625),
-				          0x80 + floor(ucode * 0.015625) % 0x40,
-				          0x80 + ucode % 0x40)
-			elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
-				if f_str_surrogate_prev == 0 then
-					f_str_surrogate_prev = ucode
-					if rest == '' then
-						return ''
+			local c1, c2, c3, c4, rest = byte(ucode, 1, 5)
+			ucode = f_str_hextbl[c1-47] * 0x1000 +
+			        f_str_hextbl[c2-47] * 0x100 +
+			        f_str_hextbl[c3-47] * 0x10 +
+			        f_str_hextbl[c4-47]
+			if ucode ~= inf then
+				if ucode < 0x80 then -- 1byte
+					if rest then
+						return char(ucode, rest)
 					end
-				end
-			else -- surrogate pair 2nd
-				if f_str_surrogate_prev == 0 then
-					f_str_surrogate_prev = 1
-				else
-					ucode = 0x10000 +
-					        (f_str_surrogate_prev - 0xD800) * 0x400 +
-					        (ucode - 0xDC00)
+					return char(ucode)
+				elseif ucode < 0x800 then -- 2byte
+					c1 = floor(ucode / 0x40)
+					c2 = ucode - c1 * 0x40
+					c1 = c1 + 0xC0
+					c2 = c2 + 0x80
+					if rest then
+						return char(c1, c2, rest)
+					end
+					return char(c1, c2)
+				elseif ucode < 0xD800 or 0xE000 <= ucode then -- 3byte
+					c1 = floor(ucode / 0x1000)
+					ucode = ucode - c1 * 0x1000
+					c2 = floor(ucode / 0x40)
+					c3 = ucode - c2 * 0x40
+					c1 = c1 + 0xE0
+					c2 = c2 + 0x80
+					c3 = c3 + 0x80
+					if rest then
+						return char(c1, c2, c3, rest)
+					end
+					return char(c1, c2, c3)
+				elseif 0xD800 <= ucode and ucode < 0xDC00 then -- surrogate pair 1st
+					if f_str_surrogate_prev == 0 then
+						f_str_surrogate_prev = ucode
+						if not rest then
+							return ''
+						end
+						decodeerror("1st surrogate pair byte not continued by 2nd")
+					end
 					f_str_surrogate_prev = 0
-					u8 = char(0xF0 + floor(ucode * 0.000003814697265625),
-					          0x80 + floor(ucode * 0.000244140625) % 0x40,
-					          0x80 + floor(ucode * 0.015625) % 0x40,
-					          0x80 + ucode % 0x40)
+					decodeerror("two contiguous 1st surrogate pair bytes")
+				else -- surrogate pair 2nd
+					if f_str_surrogate_prev ~= 0 then
+						ucode = 0x10000 +
+								(f_str_surrogate_prev - 0xD800) * 0x400 +
+								(ucode - 0xDC00)
+						f_str_surrogate_prev = 0
+						c1 = floor(ucode / 0x40000)
+						ucode = ucode - c1 * 0x40000
+						c2 = floor(ucode / 0x1000)
+						ucode = ucode - c2 * 0x1000
+						c3 = floor(ucode / 0x40)
+						c4 = ucode - c3 * 0x40
+						c1 = c1 + 0xF0
+						c2 = c2 + 0x80
+						c3 = c3 + 0x80
+						c4 = c4 + 0x80
+						if rest then
+							return char(c1, c2, c3, c4, rest)
+						end
+						return char(c1, c2, c3, c4)
+					end
+					decodeerror("2nd surrogate pair byte appeared without 1st")
 				end
 			end
+			decodeerror("invalid unicode codepoint literal")
 		end
 		if f_str_surrogate_prev ~= 0 then
 			f_str_surrogate_prev = 0
-			decodeerror("invalid surrogate pair")
+			decodeerror("1st surrogate pair byte not continued by 2nd")
 		end
-		return (u8 or f_str_escapetbl[ch]) .. rest
+		return f_str_escapetbl[ch] .. ucode
 	end
 
 	local function f_str(iskey)
@@ -421,10 +446,10 @@ local function newparser(src, saxtbl)
 		pos = newpos+1
 
 		if bs then -- check if backslash occurs
-			str = gsub(str, '\\(.)([^\\]*)', f_str_subst) -- interpret escapes
+			str = gsub(str, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst) -- interpret escapes
 			if f_str_surrogate_prev ~= 0 then
 				f_str_surrogate_prev = 0
-				decodeerror("invalid surrogate pair")
+				decodeerror("1st surrogate pair byte not continued by 2nd")
 			end
 		end
 
