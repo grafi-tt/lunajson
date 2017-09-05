@@ -392,7 +392,7 @@ local function newdecoder()
 				-- c1, c2, c3 == ':', ' ', <the first char of the value>
 				f = f_err
 				do
-					local c1, c2, c3  = byte(json, pos, pos+3)
+					local c1, c2, c3 = byte(json, pos, pos+3)
 					if c1 == 0x3A then
 						newpos = pos
 						if c2 == 0x20 then
