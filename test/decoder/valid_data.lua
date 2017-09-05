@@ -12,6 +12,7 @@ return {
 	'stopping/digits-plus',
 	'stopping/exp-period-num',
 	'stopping/frac-period-num',
+	'stopping/hex',
 	'string/backslash',
 	'string/surrogate',
 	'sample',
