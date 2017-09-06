@@ -98,7 +98,7 @@ local function newdecoder()
 		local numret = 0
 		local c = byte(json, postmp)
 		if not c then
-			return error_number()
+			return 0
 		end
 
 		if c == 0x2E then  -- is this `.`?
