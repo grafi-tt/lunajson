@@ -438,6 +438,9 @@ local function newparser(src, saxtbl)
 					pos2 = 1
 				end
 				jsonnxt()
+				if jsonlen == 0 then
+					parseerror("unterminated string")
+				end
 			end
 			if byte(json, newpos) == 0x22 then  -- break if '"'
 				break

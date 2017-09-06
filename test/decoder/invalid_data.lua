@@ -6,6 +6,7 @@ return {
 	'continuing/exp-period-num',
 	'continuing/frac-period-num',
 	'continuing/hex',
+	'string/escaped-backslash-bad',
 	'string/surrogate-double1st',
 	'string/surrogate-double2nd',
 	'string/surrogate-notpair1',
