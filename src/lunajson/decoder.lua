@@ -7,6 +7,14 @@ local mininteger, tointeger =
 local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
 
+local f_str_ctrl_pat
+if _VERSION == "Lua 5.1" then
+	-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
+	f_str_ctrl_pat = '[^\32-\255]'
+else
+	f_str_ctrl_pat = '[\0-\31]'
+end
+
 local _ENV = nil
 
 
@@ -311,28 +319,32 @@ local function newdecoder()
 		pos = pos2
 
 		if iskey then  -- check key cache
-			local str2 = f_str_keycache[str]
-			if str2 then
-				return str2
+			pos2 = f_str_keycache[str]
+			if pos2 then
+				return pos2
 			end
+			pos2 = str
 		end
-		local str2 = str
-		if find(str2, '\\', 1, true) then  -- check whether a backslash exists
+
+		if find(str, f_str_ctrl_pat) then
+			decodeerror("unescaped control string")
+		end
+		if find(str, '\\', 1, true) then  -- check whether a backslash exists
 			-- We need to grab 4 characters after the escape char,
 			-- for encoding unicode codepoint to UTF-8.
 			-- As we need to ensure that every first surrogate pair byte is
 			-- immediately followed by second one, we grab upto 5 characters and
 			-- check the last for this purpose.
-			str2 = gsub(str2, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst)
+			str = gsub(str, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst)
 			if f_str_surrogate_prev ~= 0 then
 				f_str_surrogate_prev = 0
 				decodeerror("1st surrogate pair byte not continued by 2nd")
 			end
 		end
 		if iskey then  -- commit key cache
-			f_str_keycache[str] = str2
+			f_str_keycache[pos2] = str
 		end
-		return str2
+		return str
 	end
 
 	--[[

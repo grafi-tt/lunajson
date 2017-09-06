@@ -7,6 +7,14 @@ local mininteger, tointeger =
 local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
 
+local f_str_ctrl_pat
+if _VERSION == "Lua 5.1" then
+	-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
+	f_str_ctrl_pat = '[^\32-\255]'
+else
+	f_str_ctrl_pat = '[\0-\31]'
+end
+
 local type, unpack = type, table.unpack or unpack
 
 local _ENV = nil
@@ -451,6 +459,9 @@ local function newparser(src, saxtbl)
 		str = str .. sub(json, pos, newpos-1)
 		pos = newpos+1
 
+		if find(str, f_str_ctrl_pat) then
+			parseerror("unescaped control string")
+		end
 		if bs then  -- a backslash exists
 			-- We need to grab 4 characters after the escape char,
 			-- for encoding unicode codepoint to UTF-8.
@@ -460,7 +471,7 @@ local function newparser(src, saxtbl)
 			str = gsub(str, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst)
 			if f_str_surrogate_prev ~= 0 then
 				f_str_surrogate_prev = 0
-				decodeerror("1st surrogate pair byte not continued by 2nd")
+				parseeerror("1st surrogate pair byte not continued by 2nd")
 			end
 		end
 

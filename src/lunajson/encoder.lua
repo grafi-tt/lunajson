@@ -6,12 +6,12 @@ local pairs, type = pairs, type
 local setmetatable = setmetatable
 local huge, tiny = 1/0, -1/0
 
-local f_string_pat
+local f_string_esc_pat
 if _VERSION == "Lua 5.1" then
 	-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
-	f_string_pat = '[^ -!#-[%]^-\255]'
+	f_string_esc_pat = '[^ -!#-[%]^-\255]'
 else
-	f_string_pat = '[\0-\31"\\]'
+	f_string_esc_pat = '[\0-\31"\\]'
 end
 
 local _ENV = nil
@@ -79,8 +79,8 @@ local function newencoder()
 
 	local function f_string(s)
 		builder[i] = '"'
-		if find(s, f_string_pat) then
-			s = gsub(s, f_string_pat, f_string_subst)
+		if find(s, f_string_esc_pat) then
+			s = gsub(s, f_string_esc_pat, f_string_subst)
 		end
 		builder[i+1] = s
 		builder[i+2] = '"'
