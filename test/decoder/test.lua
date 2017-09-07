@@ -80,6 +80,9 @@ local function test_invalid(decode, fn)
 	if ok then
 		return '"not errored"'
 	end
+	if not string.find(err, "parse error at ", 1, true) then
+		return string.format('%q', err)
+	end
 end
 
 

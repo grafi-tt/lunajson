@@ -1,11 +1,15 @@
-local error, setmetatable, tonumber, tostring =
-      error, setmetatable, tonumber, tostring
+local setmetatable, tonumber, tostring =
+      setmetatable, tonumber, tostring
 local floor, inf =
       math.floor, math.huge
 local mininteger, tointeger =
       math.mininteger or nil, math.tointeger or nil
 local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
+
+local function _decode_error(pos, errmsg)
+	error("parse error at " .. pos .. ": " .. errmsg, 2)
+end
 
 local f_str_ctrl_pat
 if _VERSION == "Lua 5.1" then
@@ -19,7 +23,7 @@ local _ENV = nil
 
 
 local function newdecoder()
-	local json, pos, nullv, arraylen
+	local json, pos, nullv, arraylen, rec_depth
 
 	-- `f` is the temporary for dispatcher[c] and
 	-- the dummy for the first return value of `find`
@@ -28,15 +32,15 @@ local function newdecoder()
 	--[[
 		Helper
 	--]]
-	local function decodeerror(errmsg)
-		error("parse error at " .. pos .. ": " .. errmsg)
+	local function decode_error(errmsg)
+		return _decode_error(pos, errmsg)
 	end
 
 	--[[
 		Invalid
 	--]]
 	local function f_err()
-		decodeerror('invalid value')
+		decode_error('invalid value')
 	end
 
 	--[[
@@ -48,7 +52,7 @@ local function newdecoder()
 			pos = pos+3
 			return nullv
 		end
-		decodeerror('invalid value')
+		decode_error('invalid value')
 	end
 
 	-- false
@@ -57,7 +61,7 @@ local function newdecoder()
 			pos = pos+4
 			return false
 		end
-		decodeerror('invalid value')
+		decode_error('invalid value')
 	end
 
 	-- true
@@ -66,7 +70,7 @@ local function newdecoder()
 			pos = pos+3
 			return true
 		end
-		decodeerror('invalid value')
+		decode_error('invalid value')
 	end
 
 	--[[
@@ -86,8 +90,8 @@ local function newdecoder()
 		end
 	end
 
-	local function error_number()
-		decodeerror('invalid number')
+	local function number_error()
+		return decode_error('invalid number')
 	end
 
 	-- `0(\.[0-9]*)?([eE][+-]?[0-9]*)?`
@@ -112,11 +116,11 @@ local function newdecoder()
 					return 0.0
 				end
 			end
-			error_number()
+			number_error()
 		end
 
 		if byte(num) ~= 0x2E or byte(num, -1) == 0x2E then
-			error_number()
+			number_error()
 		end
 
 		if c ~= '' then
@@ -124,7 +128,7 @@ local function newdecoder()
 				num, c = match(json, '^([^eE]*[eE][-+]?[0-9]+)([-+.A-Za-z]?)', pos)
 			end
 			if c ~= '' then
-				error_number()
+				number_error()
 			end
 		end
 
@@ -142,16 +146,16 @@ local function newdecoder()
 		pos = pos-1
 		local num, c = match(json, '^([0-9]+%.?[0-9]*)([-+.A-Za-z]?)', pos)
 		if byte(num, -1) == 0x2E then  -- error if ended with period
-			error_number()
+			number_error()
 		end
 
 		if c ~= '' then
 			if c ~= 'e' and c ~= 'E' then
-				error_number()
+				number_error()
 			end
 			num, c = match(json, '^([^eE]*[eE][-+]?[0-9]+)([-+.A-Za-z]?)', pos)
 			if not num or c ~= '' then
-				error_number()
+				number_error()
 			end
 		end
 
@@ -182,7 +186,7 @@ local function newdecoder()
 				end
 			end
 		end
-		decodeerror('invalid number')
+		decode_error('invalid number')
 	end
 
 	--[[
@@ -213,9 +217,13 @@ local function newdecoder()
 		['t']  = '\t',
 	}
 	f_str_escapetbl.__index = function()
-		decodeerror("invalid escape sequence")
+		decode_error("invalid escape sequence")
 	end
 	setmetatable(f_str_escapetbl, f_str_escapetbl)
+
+	local function surrogate_first_error()
+		return decode_error("1st surrogate pair byte not continued by 2nd")
+	end
 
 	local f_str_surrogate_prev = 0
 	local function f_str_subst(ch, ucode)
@@ -258,10 +266,10 @@ local function newdecoder()
 						if not rest then
 							return ''
 						end
-						decodeerror("1st surrogate pair byte not continued by 2nd")
+						surrogate_first_error()
 					end
 					f_str_surrogate_prev = 0
-					decodeerror("two contiguous 1st surrogate pair bytes")
+					surrogate_first_error()
 				else  -- surrogate pair 2nd
 					if f_str_surrogate_prev ~= 0 then
 						ucode = 0x10000 +
@@ -283,14 +291,14 @@ local function newdecoder()
 						end
 						return char(c1, c2, c3, c4)
 					end
-					decodeerror("2nd surrogate pair byte appeared without 1st")
+					decode_error("2nd surrogate pair byte appeared without 1st")
 				end
 			end
-			decodeerror("invalid unicode codepoint literal")
+			decode_error("invalid unicode codepoint literal")
 		end
 		if f_str_surrogate_prev ~= 0 then
 			f_str_surrogate_prev = 0
-			decodeerror("1st surrogate pair byte not continued by 2nd")
+			surrogate_first_error()
 		end
 		return f_str_escapetbl[ch] .. ucode
 	end
@@ -305,7 +313,7 @@ local function newdecoder()
 		repeat
 			newpos = find(json, '"', pos2, true)  -- search '"'
 			if not newpos then
-				decodeerror("unterminated string")
+				decode_error("unterminated string")
 			end
 			pos2 = newpos+1
 			while true do  -- skip preceding '\\'s
@@ -329,7 +337,7 @@ local function newdecoder()
 		end
 
 		if find(str, f_str_ctrl_pat) then
-			decodeerror("unescaped control string")
+			decode_error("unescaped control string")
 		end
 		if find(str, '\\', 1, true) then  -- check whether a backslash exists
 			-- We need to grab 4 characters after the escape char,
@@ -340,7 +348,7 @@ local function newdecoder()
 			str = gsub(str, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst)
 			if f_str_surrogate_prev ~= 0 then
 				f_str_surrogate_prev = 0
-				decodeerror("1st surrogate pair byte not continued by 2nd")
+				decode_error("1st surrogate pair byte not continued by 2nd")
 			end
 		end
 		if iskey then  -- commit key cache
@@ -354,6 +362,10 @@ local function newdecoder()
 	--]]
 	-- array
 	local function f_ary()
+		rec_depth = rec_depth + 1
+		if rec_depth > 1000 then
+			decode_error('too deeply nested json (> 1000)')
+		end
 		local ary = {}
 
 		f, pos = find(json, '^[ \n\r\t]*', pos)
@@ -372,7 +384,7 @@ local function newdecoder()
 
 			f, newpos = find(json, '^[ \n\r\t]*%]', pos)  -- check closing bracket
 			if not newpos then
-				decodeerror("no closing bracket of an array")
+				decode_error("no closing bracket of an array")
 			end
 			pos = newpos
 		end
@@ -381,11 +393,16 @@ local function newdecoder()
 		if arraylen then -- commit the length of the array if `arraylen` is set
 			ary[0] = i
 		end
+		rec_depth = rec_depth - 1
 		return ary
 	end
 
 	-- objects
 	local function f_obj()
+		rec_depth = rec_depth + 1
+		if rec_depth > 1000 then
+			decode_error('too deeply nested json (> 1000)')
+		end
 		local obj = {}
 
 		f, pos = find(json, '^[ \n\r\t]*', pos)
@@ -396,7 +413,7 @@ local function newdecoder()
 			repeat
 				pos = newpos+1
 				if byte(json, pos) ~= 0x22 then  -- check '"'
-					decodeerror("not key")
+					decode_error("not key")
 				end
 				pos = pos+1
 				local key = f_str(true)  -- parse key
@@ -419,7 +436,7 @@ local function newdecoder()
 				if f == f_err then  -- read a colon and arbitrary number of spaces
 					f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
 					if not newpos then
-						decodeerror("no colon after a key")
+						decode_error("no colon after a key")
 					end
 				end
 				f = dispatcher[byte(json, newpos+1)]  -- parse value
@@ -430,12 +447,13 @@ local function newdecoder()
 
 			f, newpos = find(json, '^[ \n\r\t]*}', pos)
 			if not newpos then
-				decodeerror("no closing bracket of an object")
+				decode_error("no closing bracket of an object")
 			end
 			pos = newpos
 		end
 
 		pos = pos+1
+		rec_depth = rec_depth - 1
 		return obj
 	end
 
@@ -464,7 +482,7 @@ local function newdecoder()
 	}
 	dispatcher[0] = f_err
 	dispatcher.__index = function()
-		decodeerror("unexpected termination")
+		decode_error("unexpected termination")
 	end
 	setmetatable(dispatcher, dispatcher)
 
@@ -473,6 +491,7 @@ local function newdecoder()
 	--]]
 	local function decode(json_, pos_, nullv_, arraylen_)
 		json, pos, nullv, arraylen = json_, pos_, nullv_, arraylen_
+		rec_depth = 0
 
 		pos = pos or 1
 		f, pos = find(json, '^[ \n\r\t]*', pos)
@@ -487,7 +506,7 @@ local function newdecoder()
 		else
 			f, pos = find(json, '^[ \n\r\t]*', pos)
 			if pos ~= #json then
-				error('json ended')
+				decode_error('json ended')
 			end
 			return v
 		end

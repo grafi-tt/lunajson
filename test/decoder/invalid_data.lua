@@ -1,5 +1,7 @@
 return {
+	'array/too-deep',
 	'constant/falso',
+	'object/too-deep',
 	'string/escaped-backslash-bad',
 	'string/escaped-tab',
 	'string/escaped-x',

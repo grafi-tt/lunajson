@@ -1,11 +1,15 @@
-local error, setmetatable, tonumber, tostring =
-      error, setmetatable, tonumber, tostring
+local setmetatable, tonumber, tostring =
+      setmetatable, tonumber, tostring
 local floor, inf =
       math.floor, math.huge
 local mininteger, tointeger =
       math.mininteger or nil, math.tointeger or nil
 local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
+
+local function _parse_error(pos, errmsg)
+	error("parse error at " .. pos .. ": " .. errmsg, 2)
+end
 
 local f_str_ctrl_pat
 if _VERSION == "Lua 5.1" then
@@ -23,7 +27,7 @@ local _ENV = nil
 local function nop() end
 
 local function newparser(src, saxtbl)
-	local json, jsonnxt
+	local json, jsonnxt, rec_depth
 	local jsonlen, pos, acc = 0, 1, 0
 
 	-- `f` is the temporary for dispatcher[c] and
@@ -79,12 +83,12 @@ local function newparser(src, saxtbl)
 		return c
 	end
 
-	local function parseerror(errmsg)
-		error("parse error at " .. acc + pos .. ": " .. errmsg)
+	local function parse_error(errmsg)
+		return _parse_error(acc + pos, errmsg)
 	end
 
 	local function tellc()
-		return tryc() or parseerror("unexpected termination")
+		return tryc() or parse_error("unexpected termination")
 	end
 
 	local function spaces()  -- skip spaces and prepare the next char
@@ -95,7 +99,7 @@ local function newparser(src, saxtbl)
 				return
 			end
 			if jsonlen == 0 then
-				parseerror("unexpected termination")
+				parse_error("unexpected termination")
 			end
 			jsonnxt()
 		end
@@ -105,7 +109,7 @@ local function newparser(src, saxtbl)
 		Invalid
 	--]]
 	local function f_err()
-		parseerror('invalid value')
+		parse_error('invalid value')
 	end
 
 	--[[
@@ -116,7 +120,7 @@ local function newparser(src, saxtbl)
 		for i = 1, targetlen do
 			local c = tellc()
 			if byte(target, i) ~= c then
-				parseerror("invalid char")
+				parse_error("invalid char")
 			end
 			pos = pos+1
 		end
@@ -167,8 +171,8 @@ local function newparser(src, saxtbl)
 		end
 	end
 
-	local function error_number()
-		parseerror('invalid number')
+	local function number_error()
+		return parse_error('invalid number')
 	end
 
 	-- fallback slow parser
@@ -190,7 +194,7 @@ local function newparser(src, saxtbl)
 		if c == 0x30 then
 			nxt()
 			if c and 0x30 <= c and c < 0x3A then
-				error_number()
+				number_error()
 			end
 		else
 			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
@@ -199,7 +203,7 @@ local function newparser(src, saxtbl)
 			is_int = false
 			nxt()
 			if not (c and 0x30 <= c and c < 0x3A) then
-				error_number()
+				number_error()
 			end
 			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
 		end
@@ -210,14 +214,14 @@ local function newparser(src, saxtbl)
 				nxt()
 			end
 			if not (c and 0x30 <= c and c < 0x3A) then
-				error_number()
+				number_error()
 			end
 			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
 		end
 		if c and (0x41 <= c and c <= 0x5B or
 		          0x61 <= c and c <= 0x7B or
 		          c == 0x2B or c == 0x2D or c == 0x2E) then
-			error_number()
+			number_error()
 		end
 		pos = pos-1
 
@@ -343,7 +347,7 @@ local function newparser(src, saxtbl)
 				end
 			end
 		end
-		parseerror("invalid number")
+		parse_error("invalid number")
 	end
 
 	--[[
@@ -374,9 +378,13 @@ local function newparser(src, saxtbl)
 		['t']  = '\t'
 	}
 	f_str_escapetbl.__index = function()
-		decodeerror("invalid escape sequence")
+		parse_error("invalid escape sequence")
 	end
 	setmetatable(f_str_escapetbl, f_str_escapetbl)
+
+	local function surrogate_first_error()
+		return parse_error("1st surrogate pair byte not continued by 2nd")
+	end
 
 	local f_str_surrogate_prev = 0
 	local function f_str_subst(ch, ucode)
@@ -419,10 +427,10 @@ local function newparser(src, saxtbl)
 						if not rest then
 							return ''
 						end
-						decodeerror("1st surrogate pair byte not continued by 2nd")
+						surrogate_first_error()
 					end
 					f_str_surrogate_prev = 0
-					decodeerror("two contiguous 1st surrogate pair bytes")
+					surrogate_first_error()
 				else  -- surrogate pair 2nd
 					if f_str_surrogate_prev ~= 0 then
 						ucode = 0x10000 +
@@ -444,14 +452,14 @@ local function newparser(src, saxtbl)
 						end
 						return char(c1, c2, c3, c4)
 					end
-					decodeerror("2nd surrogate pair byte appeared without 1st")
+					parse_error("2nd surrogate pair byte appeared without 1st")
 				end
 			end
-			decodeerror("invalid unicode codepoint literal")
+			parse_error("invalid unicode codepoint literal")
 		end
 		if f_str_surrogate_prev ~= 0 then
 			f_str_surrogate_prev = 0
-			decodeerror("1st surrogate pair byte not continued by 2nd")
+			surrogate_first_error()
 		end
 		return f_str_escapetbl[ch] .. ucode
 	end
@@ -475,7 +483,7 @@ local function newparser(src, saxtbl)
 				end
 				jsonnxt()
 				if jsonlen == 0 then
-					parseerror("unterminated string")
+					parse_error("unterminated string")
 				end
 			end
 			if byte(json, newpos) == 0x22 then  -- break if '"'
@@ -488,7 +496,7 @@ local function newparser(src, saxtbl)
 		pos = newpos+1
 
 		if find(str, f_str_ctrl_pat) then
-			parseerror("unescaped control string")
+			parse_error("unescaped control string")
 		end
 		if bs then  -- a backslash exists
 			-- We need to grab 4 characters after the escape char,
@@ -499,7 +507,7 @@ local function newparser(src, saxtbl)
 			str = gsub(str, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst)
 			if f_str_surrogate_prev ~= 0 then
 				f_str_surrogate_prev = 0
-				parseeerror("1st surrogate pair byte not continued by 2nd")
+				parse_error("1st surrogate pair byte not continued by 2nd")
 			end
 		end
 
@@ -514,7 +522,12 @@ local function newparser(src, saxtbl)
 	--]]
 	-- arrays
 	local function f_ary()
+		rec_depth = rec_depth + 1
+		if rec_depth > 1000 then
+			parse_error('too deeply nested json (> 1000)')
+		end
 		sax_startarray()
+
 		spaces()
 		if byte(json, pos) ~= 0x5D then  -- check closing bracket ']' which means the array empty
 			local newpos
@@ -538,7 +551,7 @@ local function newparser(src, saxtbl)
 					elseif c == 0x5D then  -- check closing bracket again
 						break
 					else
-						parseerror("no closing bracket of an array")
+						parse_error("no closing bracket of an array")
 					end
 				end
 				pos = newpos+1
@@ -547,19 +560,26 @@ local function newparser(src, saxtbl)
 				end
 			end
 		end
+
 		pos = pos+1
+		rec_depth = rec_depth - 1
 		return sax_endarray()
 	end
 
 	-- objects
 	local function f_obj()
+		rec_depth = rec_depth + 1
+		if rec_depth > 1000 then
+			parse_error('too deeply nested json (> 1000)')
+		end
 		sax_startobject()
+
 		spaces()
 		if byte(json, pos) ~= 0x7D then  -- check closing bracket '}' which means the object empty
 			local newpos
 			while true do
 				if byte(json, pos) ~= 0x22 then
-					parseerror("not key")
+					parse_error("not key")
 				end
 				pos = pos+1
 				f_str(true)
@@ -567,7 +587,7 @@ local function newparser(src, saxtbl)
 				if not newpos then
 					spaces()  -- read spaces through chunks
 					if byte(json, pos) ~= 0x3A then  -- check colon again
-						parseerror("no colon after a key")
+						parse_error("no colon after a key")
 					end
 					pos = pos+1
 					spaces()
@@ -596,7 +616,7 @@ local function newparser(src, saxtbl)
 					elseif c == 0x7D then  -- check closing bracket again
 						break
 					else
-						parseerror("no closing bracket of an object")
+						parse_error("no closing bracket of an object")
 					end
 				end
 				pos = newpos+1
@@ -605,7 +625,9 @@ local function newparser(src, saxtbl)
 				end
 			end
 		end
+
 		pos = pos+1
+		rec_depth = rec_depth - 1
 		return sax_endobject()
 	end
 
@@ -638,6 +660,7 @@ local function newparser(src, saxtbl)
 		public funcitons
 	--]]
 	local function run()
+		rec_depth = 0
 		spaces()
 		f = dispatcher[byte(json, pos)]
 		pos = pos+1
