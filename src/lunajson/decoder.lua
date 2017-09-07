@@ -71,9 +71,8 @@ local function newdecoder()
 
 	--[[
 		Numbers
-		Conceptually, the longest prefix that matches to
-		`-?(0|[1-9][0-9]*)(\.[0-9]*)?([eE][+-]?[0-9]*)?` (in regexp) is
-		captured as a number and its conformance to the JSON spec is checked.
+		Conceptually, the longest prefix that matches to `[-+.0-9A-Za-z]+` (in regexp)
+		is captured as a number and its conformance to the JSON spec is checked.
 	--]]
 	-- deal with non-standard locales
 	local radixmark = match(tostring(0.5), '[^0-9]')
@@ -93,73 +92,76 @@ local function newdecoder()
 
 	-- `0(\.[0-9]*)?([eE][+-]?[0-9]*)?`
 	local function f_zro(mns)
-		local postmp = pos
-		local num
-		local numret = 0
-		local c = byte(json, postmp)
-		if not c then
-			return 0
+		local num, c = match(json, '^(%.?[0-9]*)([-+.A-Za-z]?)', pos)  -- skipping 0
+
+		if num == '' then
+			if c == '' then
+				if mns then
+					return -0.0
+				end
+				return 0
+			end
+
+			if c == 'e' or c == 'E' then
+				num, c = match(json, '^([^eE]*[eE][-+]?[0-9]+)([-+.A-Za-z]?)', pos)
+				if c == '' then
+					pos = pos + #num
+					if mns then
+						return -0.0
+					end
+					return 0.0
+				end
+			end
+			error_number()
 		end
 
-		if c == 0x2E then  -- is this `.`?
-			num = match(json, '^.[0-9]*', pos)  -- skipping 0
-			c = #num
-			if c == 1 then
-				return error_number()
-			end
-			postmp = pos + c
-			c = byte(json, postmp)
+		if byte(num) ~= 0x2E or byte(num, -1) == 0x2E then
+			error_number()
 		end
 
-		if c == 0x45 or c == 0x65 then  -- is this e or E?
-			c = match(json, '^[^eE]*[eE][-+]?[0-9]+', pos)
-			if not c then
-				return error_number()
+		if c ~= '' then
+			if c == 'e' or c == 'E' then
+				num, c = match(json, '^([^eE]*[eE][-+]?[0-9]+)([-+.A-Za-z]?)', pos)
 			end
-			if num then
-				num = c
-			else  -- `0e.*` is always 0.0
-				numret = 0.0
+			if c ~= '' then
+				error_number()
 			end
-			postmp = pos + #c
 		end
 
-		pos = postmp
-		if num then
-			numret = fixedtonumber(num)
-		end
+		pos = pos + #num
+		c = fixedtonumber(num)
+
 		if mns then
-			numret = -numret
+			c = -c
 		end
-		return numret
+		return c
 	end
 
 	-- `[1-9][0-9]*(\.[0-9]*)?([eE][+-]?[0-9]*)?`
 	local function f_num(mns)
 		pos = pos-1
-		local num = match(json, '^.[0-9]*%.?[0-9]*', pos)
-		if byte(num, -1) == 0x2E then  -- `.`?
-			return error_number()
+		local num, c = match(json, '^([0-9]+%.?[0-9]*)([-+.A-Za-z]?)', pos)
+		if byte(num, -1) == 0x2E then  -- error if ended with period
+			error_number()
 		end
-		local postmp = pos + #num
-		local c = byte(json, postmp)
 
-		if c == 0x45 or c == 0x65 then  -- e or E?
-			num = match(json, '^[^eE]*[eE][-+]?[0-9]+', pos)
-			if not num then
-				return error_number()
+		if c ~= '' then
+			if c ~= 'e' and c ~= 'E' then
+				error_number()
 			end
-			postmp = pos + #num
+			num, c = match(json, '^([^eE]*[eE][-+]?[0-9]+)([-+.A-Za-z]?)', pos)
+			if not num or c ~= '' then
+				error_number()
+			end
 		end
 
-		pos = postmp
+		pos = pos + #num
 		c = fixedtonumber(num)
+
 		if mns then
 			c = -c
-			if c == mininteger then
-				if not find(num, '[^0-9]') then
-					c = mininteger
-				end
+			if c == mininteger and not find(num, '[^0-9]') then
+				c = mininteger
 			end
 		end
 		return c

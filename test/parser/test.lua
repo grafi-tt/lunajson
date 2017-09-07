@@ -38,11 +38,11 @@ local function test(round)
 		return "not __mmmmmm"
 	end
 	parser.run()
-	if parser.tryc() ~= string.byte('+') then
-		return "not +"
+	if parser.tryc() ~= string.byte('&') then
+		return "not &"
 	end
-	if parser.read(200) ~= '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++' then
-		return "not +*"
+	if parser.read(200) ~= '&++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++' then
+		return "not &+*"
 	end
 	if parser.tellpos() ~= 276 then
 		print(parser.tellpos())
