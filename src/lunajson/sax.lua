@@ -582,7 +582,7 @@ local function newparser(src, saxtbl)
 					parse_error("not key")
 				end
 				pos = pos+1
-				f_str(true)
+				f_str(true)  -- parse key
 				f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)  -- check colon
 				if not newpos then
 					spaces()  -- read spaces through chunks
@@ -597,9 +597,9 @@ local function newparser(src, saxtbl)
 				if pos > jsonlen then
 					spaces()
 				end
-				f = dispatcher[byte(json, pos)]  -- parse value
+				f = dispatcher[byte(json, pos)]
 				pos = pos+1
-				f()
+				f()  -- parse value
 				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)  -- check comma
 				if not newpos then
 					f, newpos = find(json, '^[ \n\r\t]*}', pos)  -- check closing bracket

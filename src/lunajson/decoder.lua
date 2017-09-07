@@ -438,10 +438,10 @@ local function newdecoder()
 					if not newpos then
 						decode_error("no colon after a key")
 					end
+					f = dispatcher[byte(json, newpos+1)]
 				end
-				f = dispatcher[byte(json, newpos+1)]  -- parse value
 				pos = newpos+2
-				obj[key] = f()
+				obj[key] = f()  -- parse value
 				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
 			until not newpos
 
