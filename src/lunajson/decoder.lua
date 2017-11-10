@@ -506,7 +506,10 @@ local function newdecoder()
 		else
 			f, pos = find(json, '^[ \n\r\t]*', pos)
 			if pos ~= #json then
-				decode_error('json ended')
+				if pos_ == nil then
+					decode_error('json ended')
+				end
+				return v, pos
 			end
 			return v
 		end
