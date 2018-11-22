@@ -20,6 +20,7 @@ else
 end
 
 local type, unpack = type, table.unpack or unpack
+local open = io.open
 
 local _ENV = nil
 
@@ -697,7 +698,7 @@ local function newparser(src, saxtbl)
 end
 
 local function newfileparser(fn, saxtbl)
-	local fp = io.open(fn)
+	local fp = open(fn)
 	local function gen()
 		local s
 		if fp then
