@@ -368,28 +368,28 @@ local function newdecoder()
 		end
 		local ary = {}
 
-		f, pos = find(json, '^[ \n\r\t]*', pos)
-		pos = pos+1
+		pos = match(json, '^[ \n\r\t]*()', pos)
 
 		local i = 0
-		if byte(json, pos) ~= 0x5D then  -- check closing bracket ']' which means the array empty
-			local newpos = pos-1
+		if byte(json, pos) == 0x5D then  -- check closing bracket ']' which means the array empty
+			pos = pos+1
+		else
+			local newpos = pos
 			repeat
 				i = i+1
-				f = dispatcher[byte(json,newpos+1)]  -- parse value
-				pos = newpos+2
+				f = dispatcher[byte(json,newpos)]  -- parse value
+				pos = newpos+1
 				ary[i] = f()
-				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)  -- check comma
+				newpos = match(json, '^[ \n\r\t]*,[ \n\r\t]*()', pos)  -- check comma
 			until not newpos
 
-			f, newpos = find(json, '^[ \n\r\t]*%]', pos)  -- check closing bracket
+			newpos = match(json, '^[ \n\r\t]*%]()', pos)  -- check closing bracket
 			if not newpos then
 				decode_error("no closing bracket of an array")
 			end
 			pos = newpos
 		end
 
-		pos = pos+1
 		if arraylen then -- commit the length of the array if `arraylen` is set
 			ary[0] = i
 		end
@@ -405,54 +405,51 @@ local function newdecoder()
 		end
 		local obj = {}
 
-		f, pos = find(json, '^[ \n\r\t]*', pos)
-		pos = pos+1
-		if byte(json, pos) ~= 0x7D then  -- check closing bracket '}' which means the object empty
-			local newpos = pos-1
+		pos = match(json, '^[ \n\r\t]*()', pos)
+		if byte(json, pos) == 0x7D then  -- check closing bracket '}' which means the object empty
+			pos = pos+1
+		else
+			local newpos = pos
 
 			repeat
-				pos = newpos+1
-				if byte(json, pos) ~= 0x22 then  -- check '"'
+				if byte(json, newpos) ~= 0x22 then  -- check '"'
 					decode_error("not key")
 				end
-				pos = pos+1
+				pos = newpos+1
 				local key = f_str(true)  -- parse key
 
 				-- optimized for compact json
 				-- c1, c2 == ':', <the first char of the value> or
 				-- c1, c2, c3 == ':', ' ', <the first char of the value>
 				f = f_err
-				do
-					local c1, c2, c3 = byte(json, pos, pos+3)
-					if c1 == 0x3A then
-						newpos = pos
-						if c2 == 0x20 then
-							newpos = newpos+1
-							c2 = c3
-						end
+				local c1, c2, c3 = byte(json, pos, pos+3)
+				if c1 == 0x3A then
+					if c2 == 0x20 then
+						pos = pos+3
+						f = dispatcher[c3]
+					else
+						pos = pos+2
 						f = dispatcher[c2]
 					end
-				end
-				if f == f_err then  -- read a colon and arbitrary number of spaces
-					f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)
+				else -- read a colon and arbitrary number of spaces
+					newpos = match(json, '^[ \n\r\t]*:[ \n\r\t]*()', pos)
 					if not newpos then
 						decode_error("no colon after a key")
 					end
-					f = dispatcher[byte(json, newpos+1)]
+					f = dispatcher[byte(json, newpos)]
+					pos = newpos+1
 				end
-				pos = newpos+2
 				obj[key] = f()  -- parse value
-				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)
+				newpos = match(json, '^[ \n\r\t]*,[ \n\r\t]*()', pos)
 			until not newpos
 
-			f, newpos = find(json, '^[ \n\r\t]*}', pos)
+			newpos = match(json, '^[ \n\r\t]*}()', pos)
 			if not newpos then
 				decode_error("no closing bracket of an object")
 			end
 			pos = newpos
 		end
 
-		pos = pos+1
 		rec_depth = rec_depth - 1
 		return obj
 	end
@@ -493,9 +490,7 @@ local function newdecoder()
 		json, pos, nullv, arraylen = json_, pos_, nullv_, arraylen_
 		rec_depth = 0
 
-		pos = pos or 1
-		f, pos = find(json, '^[ \n\r\t]*', pos)
-		pos = pos+1
+		pos = match(json, '^[ \n\r\t]*()', pos)
 
 		f = dispatcher[byte(json, pos)]
 		pos = pos+1
