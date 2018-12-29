@@ -637,8 +637,8 @@ local function newparser(src, saxtbl)
 		indexed by the code of the value's first char.
 		Key should be non-nil.
 	--]]
-	dispatcher = {
-		       f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+	dispatcher = { [0] =
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
@@ -655,7 +655,6 @@ local function newparser(src, saxtbl)
 		f_err, f_err, f_err, f_err, f_tru, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_obj, f_err, f_err, f_err, f_err,
 	}
-	dispatcher[0] = f_err
 
 	--[[
 		public funcitons

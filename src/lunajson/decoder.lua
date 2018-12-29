@@ -462,8 +462,8 @@ local function newdecoder()
 		indexed by the code of the value's first char.
 		Nil key means the end of json.
 	--]]
-	dispatcher = {
-		       f_err, f_err, f_err, f_err, f_err, f_err, f_err,
+	dispatcher = { [0] =
+		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_err, f_err, f_err, f_err, f_err,
@@ -479,11 +479,10 @@ local function newdecoder()
 		f_err, f_err, f_err, f_err, f_err, f_err, f_nul, f_err,
 		f_err, f_err, f_err, f_err, f_tru, f_err, f_err, f_err,
 		f_err, f_err, f_err, f_obj, f_err, f_err, f_err, f_err,
+		__index = function()
+			decode_error("unexpected termination")
+		end
 	}
-	dispatcher[0] = f_err
-	dispatcher.__index = function()
-		decode_error("unexpected termination")
-	end
 	setmetatable(dispatcher, dispatcher)
 
 	--[[
