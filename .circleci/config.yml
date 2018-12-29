@@ -7,10 +7,10 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: v1-{{ checksum "ci/lua_dists.txt" }}
+          key: v1-{{ checksum "ci/lua_impls.txt" }}
       - run: cp ci/lua_base.sh.example lua_base.sh
       - run: ci/prepare_lua.sh
       - save_cache:
-          key: v1-{{ checksum "ci/lua_dists.txt" }}
+          key: v1-{{ checksum "ci/lua_impls.txt" }}
           paths: ~/lua
       - run: test/run.sh
