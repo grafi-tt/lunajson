@@ -21,6 +21,6 @@ cd "${lua_base}" || exit 1
 
 for lua_impl in ${lua_impls}; do
 	set_lua_vars
-	[ -e "${lua_archive}" ] || wget "${lua_url}" || exit $?
+	download "${lua_archive}" "${lua_url}" "${lua_checksum}"
 	[ -e "${lua_bin}" ] || build_lua || exit $?
 done

@@ -5,6 +5,7 @@
 
 lpeg_archive="lpeg-1.0.1.tar.gz"
 lpeg_url="http://www.inf.puc-rio.br/~roberto/lpeg/${lpeg_archive}"
+lpeg_checksum="62d9f7a9ea3c1f215c77e0cadd8534c6ad9af0fb711c3f89188a8891c72f026b"
 
 install_lpeg() {
 	tar xvf "${lpeg_archive}" -C "${lua_impl}" || exit $?
@@ -25,6 +26,7 @@ install_lpeg() {
 
 cjson_archive="lua-cjson-2.1.0.tar.gz"
 cjson_url="https://www.kyne.com.au/~mark/software/download/${cjson_archive}"
+cjson_checksum="51bc69cd55931e0cba2ceae39e9efa2483f4292da3a88a1ed470eda829f6c778"
 
 install_cjson() {
 	tar xvf "${cjson_archive}" -C "${lua_impl}" || exit $?
@@ -43,6 +45,7 @@ install_cjson() {
 
 dkjson_archive="dkjson.lua?name=16cbc26080996d9da827df42cb0844a25518eeb3"
 dkjson_url="http://dkolf.de/src/dkjson-lua.fsl/raw/dkjson.lua?name=16cbc26080996d9da827df42cb0844a25518eeb3"
+dkjson_checksum="1f56a6971ffce3021ece3afdc06163f10bee91264d0d29cc88bbbeb43cffd2d2"
 
 install_dkjson() {
 	cp "${dkjson_archive}" "${lua_lib}/dkjson.lua" || exit $?
@@ -55,10 +58,8 @@ for dep in lpeg cjson dkjson; do
 	update=n
 	eval dep_archive='"$'${dep}_archive'"'
 	eval dep_url='"$'${dep}_url'"'
-	if [ ! -e "${dep_archive}" ]; then
-		wget "${dep_url}" || exit $?
-		update=y
-	fi
+	eval dep_checksum='"$'${dep}_checksum'"'
+	download "${dep_archive}" "${dep_url}" "${dep_checksum}"
 	for lua_impl in ${lua_impls}; do
 		set_lua_vars
 		mkdir -p "${lua_lib}" || exit $?
