@@ -361,10 +361,10 @@ local function newparser(src, saxtbl)
 		inf, inf, inf, inf, inf, inf, inf, inf,
 		inf, inf, inf, inf, inf, inf, inf, inf,
 		inf, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF,
+		__index = function()
+			return inf
+		end
 	}
-	f_str_hextbl.__index = function()
-		return inf
-	end
 	setmetatable(f_str_hextbl, f_str_hextbl)
 
 	local f_str_escapetbl = {
@@ -375,11 +375,11 @@ local function newparser(src, saxtbl)
 		['f']  = '\f',
 		['n']  = '\n',
 		['r']  = '\r',
-		['t']  = '\t'
+		['t']  = '\t',
+		__index = function()
+			parse_error("invalid escape sequence")
+		end
 	}
-	f_str_escapetbl.__index = function()
-		parse_error("invalid escape sequence")
-	end
 	setmetatable(f_str_escapetbl, f_str_escapetbl)
 
 	local function surrogate_first_error()
@@ -434,8 +434,8 @@ local function newparser(src, saxtbl)
 				else  -- surrogate pair 2nd
 					if f_str_surrogate_prev ~= 0 then
 						ucode = 0x10000 +
-								(f_str_surrogate_prev - 0xD800) * 0x400 +
-								(ucode - 0xDC00)
+						        (f_str_surrogate_prev - 0xD800) * 0x400 +
+						        (ucode - 0xDC00)
 						f_str_surrogate_prev = 0
 						c1 = floor(ucode / 0x40000)
 						ucode = ucode - c1 * 0x40000
