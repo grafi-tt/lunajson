@@ -1,3 +1,8 @@
+# 1.2.2
+
+* Accept multiple spaces after colon (this bug introduced in 1.2.1)
+* Slight decoding speed up
+
 # 1.2.1
 
 * Performance improvement of decoding (Thanks to @muhmuhten)
