@@ -94,9 +94,8 @@ local function newparser(src, saxtbl)
 
 	local function spaces()  -- skip spaces and prepare the next char
 		while true do
-			f, pos = find(json, '^[ \n\r\t]*', pos)
-			if pos ~= jsonlen then
-				pos = pos+1
+			pos = match(json, '^[ \n\r\t]*()', pos)
+			if pos <= jsonlen then
 				return
 			end
 			if jsonlen == 0 then
@@ -536,33 +535,32 @@ local function newparser(src, saxtbl)
 				f = dispatcher[byte(json, pos)]  -- parse value
 				pos = pos+1
 				f()
-				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)  -- check comma
-				if not newpos then
-					f, newpos = find(json, '^[ \n\r\t]*%]', pos)  -- check closing bracket
+				newpos = match(json, '^[ \n\r\t]*,[ \n\r\t]*()', pos)  -- check comma
+				if newpos then
+					pos = newpos
+				else
+					newpos = match(json, '^[ \n\r\t]*%]()', pos)  -- check closing bracket
 					if newpos then
 						pos = newpos
 						break
 					end
 					spaces()  -- since the current chunk can be ended, skip spaces toward following chunks
 					local c = byte(json, pos)
+					pos = pos+1
 					if c == 0x2C then  -- check comma again
-						pos = pos+1
 						spaces()
-						newpos = pos-1
 					elseif c == 0x5D then  -- check closing bracket again
 						break
 					else
 						parse_error("no closing bracket of an array")
 					end
 				end
-				pos = newpos+1
 				if pos > jsonlen then
 					spaces()
 				end
 			end
 		end
 
-		pos = pos+1
 		rec_depth = rec_depth - 1
 		return sax_endarray()
 	end
@@ -584,50 +582,49 @@ local function newparser(src, saxtbl)
 				end
 				pos = pos+1
 				f_str(true)  -- parse key
-				f, newpos = find(json, '^[ \n\r\t]*:[ \n\r\t]*', pos)  -- check colon
-				if not newpos then
+				newpos = match(json, '^[ \n\r\t]*:[ \n\r\t]*()', pos)  -- check colon
+				if newpos then
+					pos = newpos
+				else
 					spaces()  -- read spaces through chunks
 					if byte(json, pos) ~= 0x3A then  -- check colon again
 						parse_error("no colon after a key")
 					end
 					pos = pos+1
 					spaces()
-					newpos = pos-1
 				end
-				pos = newpos+1
 				if pos > jsonlen then
 					spaces()
 				end
 				f = dispatcher[byte(json, pos)]
 				pos = pos+1
 				f()  -- parse value
-				f, newpos = find(json, '^[ \n\r\t]*,[ \n\r\t]*', pos)  -- check comma
-				if not newpos then
-					f, newpos = find(json, '^[ \n\r\t]*}', pos)  -- check closing bracket
+				newpos = match(json, '^[ \n\r\t]*,[ \n\r\t]*()', pos)  -- check comma
+				if newpos then
+					pos = newpos
+				else
+					newpos = match(json, '^[ \n\r\t]*}()', pos)  -- check closing bracket
 					if newpos then
 						pos = newpos
 						break
 					end
 					spaces()  -- read spaces through chunks
 					local c = byte(json, pos)
+					pos = pos+1
 					if c == 0x2C then  -- check comma again
-						pos = pos+1
 						spaces()
-						newpos = pos-1
 					elseif c == 0x7D then  -- check closing bracket again
 						break
 					else
 						parse_error("no closing bracket of an object")
 					end
 				end
-				pos = newpos+1
 				if pos > jsonlen then
 					spaces()
 				end
 			end
 		end
 
-		pos = pos+1
 		rec_depth = rec_depth - 1
 		return sax_endobject()
 	end
