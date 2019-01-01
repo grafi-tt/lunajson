@@ -23,7 +23,7 @@ for _, encoder in ipairs(encoders) do
 	io.write('  ' .. encoder .. ':\n')
 	local encode = util.load('encode/' .. encoder .. '.lua')
 	for _, fn in ipairs(data) do
-		local t =  bench(encode, fn)
+		local t = bench(encode, fn)
 		io.write(string.format('    %s: %.03f\n', fn, t))
 	end
 end

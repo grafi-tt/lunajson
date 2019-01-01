@@ -4,7 +4,7 @@ lua_impls="`cat "${0%/*}/../ci/lua_impls.txt"`"
 
 set_lua_vars() {
 	lua_archive="${lua_impl}.tar.gz"
-	case "$lua_impl" in
+	case "${lua_impl}" in
 		lua-* )
 			lua_url="https://www.lua.org/ftp/${lua_archive}"
 			lua_bin="${lua_impl}/src/lua"

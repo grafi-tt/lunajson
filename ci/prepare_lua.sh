@@ -4,22 +4,23 @@
 
 
 build_lua() {
-	rm -rf "$lua_impl"
-	tar xzf "$lua_archive" || exit $?
-	cd "$lua_impl"
-	case "$lua_impl" in
-		lua-* ) make "$platform" || exit $?;;
+	rm -rf "${lua_impl}" || exit $?
+	tar xzf "${lua_archive}" || exit $?
+	cd "${lua_impl}" || exit 1
+	case "${lua_impl}" in
+		lua-* ) make "${platform}" || exit $?;;
 		LuaJIT-* ) make || exit $?;;
+		* ) exit 1;;
 	esac
-	cd ..
+	cd .. || exit 1
 }
 
 
-mkdir -p "$lua_base"
-cd "$lua_base"
+mkdir -p "${lua_base}" || exit $?
+cd "${lua_base}" || exit 1
 
-for lua_impl in $lua_impls; do
+for lua_impl in ${lua_impls}; do
 	set_lua_vars
-	[ -e "$lua_archive" ] || wget "$lua_url" || exit $?
-	[ -e "$lua_bin" ] || build_lua || exit $?
+	[ -e "${lua_archive}" ] || wget "${lua_url}" || exit $?
+	[ -e "${lua_bin}" ] || build_lua || exit $?
 done

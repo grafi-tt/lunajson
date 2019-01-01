@@ -25,7 +25,7 @@ for _, decoder in ipairs(decoders) do
 	io.write('  ' .. decoder .. ':\n')
 	local decode = util.load('decode/' .. decoder .. '.lua')
 	for _, fn in ipairs(data) do
-		local t =  bench(decode, fn)
+		local t = bench(decode, fn)
 		io.write(string.format('    %s: %.03f\n', fn, t))
 	end
 end
