@@ -307,33 +307,34 @@ local function newdecoder()
 	local f_str_keycache = setmetatable({}, {__mode="v"})
 
 	local function f_str(iskey)
-		local newpos = pos-2
-		local pos2 = pos
-		local c1, c2
+		local newpos = pos
+		local tmppos, c1, c2
 		repeat
-			newpos = find(json, '"', pos2, true)  -- search '"'
+			newpos = find(json, '"', newpos, true)  -- search '"'
 			if not newpos then
 				decode_error("unterminated string")
 			end
-			pos2 = newpos+1
-			while true do  -- skip preceding '\\'s
-				c1, c2 = byte(json, newpos-2, newpos-1)
-				if c2 ~= 0x5C or c1 ~= 0x5C then
-					break
-				end
-				newpos = newpos-2
+			tmppos = newpos-1
+			newpos = newpos+1
+			c1, c2 = byte(json, tmppos-1, tmppos)
+			if c2 == 0x5C and c1 == 0x5C then  -- skip preceding '\\'s
+				repeat
+					tmppos = tmppos-2
+					c1, c2 = byte(json, tmppos-1, tmppos)
+				until c2 ~= 0x5C or c1 ~= 0x5C
+				tmppos = newpos-2
 			end
 		until c2 ~= 0x5C  -- leave if '"' is not preceded by '\'
 
-		local str = sub(json, pos, pos2-2)
-		pos = pos2
+		local str = sub(json, pos, tmppos)
+		pos = newpos
 
 		if iskey then  -- check key cache
-			pos2 = f_str_keycache[str]
-			if pos2 then
-				return pos2
+			tmppos = f_str_keycache[str]  -- reuse tmppos for cache key/val
+			if tmppos then
+				return tmppos
 			end
-			pos2 = str
+			tmppos = str
 		end
 
 		if find(str, f_str_ctrl_pat) then
@@ -352,7 +353,7 @@ local function newdecoder()
 			end
 		end
 		if iskey then  -- commit key cache
-			f_str_keycache[pos2] = str
+			f_str_keycache[tmppos] = str
 		end
 		return str
 	end
