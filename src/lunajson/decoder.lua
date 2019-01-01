@@ -425,21 +425,23 @@ local function newdecoder()
 				f = f_err
 				local c1, c2, c3 = byte(json, pos, pos+3)
 				if c1 == 0x3A then
-					if c2 == 0x20 then
-						pos = pos+3
-						f = dispatcher[c3]
-					else
-						pos = pos+2
+					if c2 ~= 0x20 then
 						f = dispatcher[c2]
+						newpos = pos+2
+					else
+						f = dispatcher[c3]
+						newpos = pos+3
 					end
-				else -- read a colon and arbitrary number of spaces
+				end
+				if f == f_err then  -- read a colon and arbitrary number of spaces
 					newpos = match(json, '^[ \n\r\t]*:[ \n\r\t]*()', pos)
 					if not newpos then
 						decode_error("no colon after a key")
 					end
 					f = dispatcher[byte(json, newpos)]
-					pos = newpos+1
+					newpos = newpos+1
 				end
+				pos = newpos
 				obj[key] = f()  -- parse value
 				newpos = match(json, '^[ \n\r\t]*,[ \n\r\t]*()', pos)
 			until not newpos
