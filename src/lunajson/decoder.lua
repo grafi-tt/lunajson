@@ -29,7 +29,7 @@ local _ENV = nil
 --   keylist[lastkey] = nil
 local metafirstkey, metalastkey = {}, {}
 local function orderedtable(obj)
-	local keylist = {}
+	local keylist = { [metalastkey] = metafirstkey }
 	local function onext(key2val, key)
 		local val
 		repeat
