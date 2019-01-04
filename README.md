@@ -19,15 +19,15 @@ Or you can download source manually and copy `src/*` into somewhere on your `pac
 	print(lunajson.encode(t)) -- prints {"Hello":["lunajson",1.5]}
 
 ## API
-### lunajson.decode(jsonstr, [pos, [nullv, [arraylen]]])
-Decode `jsonstr`. If `pos` is specified, it starts decoding from `pos` until the JSON definition ends, otherwise the entire input is parsed as JSON. `null` inside `jsonstr` will be decoded as the optional sentinel value `nullv` if specified, and discarded otherwise. If `arraylen` is true, the length of an array `ary` will be stored in `ary[0]`. This behavior is useful when empty arrays should not be confused with empty objects.
+### lunajson.decode(jsonstr, [pos, [nullv, [arraylen, [preserveorder]]]])
+Decode `jsonstr`. If `pos` is specified, it starts decoding from `pos` until the JSON definition ends, otherwise the entire input is parsed as JSON. `null` inside `jsonstr` will be decoded as the optional sentinel value `nullv` if specified, and discarded otherwise. If `arraylen` is true, the length of an array `ary` will be stored in `ary[0]`. This behavior is useful when empty arrays should not be confused with empty objects. If `preservedorder` is true, keys' orders of JSON objects are preserved by means of `__pairs` metamethod. The standard `pairs` function on Lua 5.2 or later respects this metamethod. On Lua 5.1 and LuaJIT not built with `-DLUAJIT_ENABLE_LUA52COMPAT`, you have to monkey-patch `pairs` function or call `__pairs` metamethod directly.
 
 This function returns the decoded value if `jsonstr` contains valid JSON,  otherwise an error will be raised. If `pos` is specified it also returns the position immediately after the end of decoded JSON.
 
 ### lunajson.encode(value, [nullv])
 Encode `value` into a JSON string and return it. If `nullv` is specified, values equal to `nullv` will be encoded as `null`.
 
-This function encodes a table `t` as a JSON array if a value `t[1]` is present or a number `t[0]` is present. If `t[0]` is present, its value is considered as the length of the array. Then the array may contain `nil` and those will be encoded as `null`. Otherwise, this function scans non `nil` values starting from index 1, up to the first `nil` it finds. When the table `t` is not an array, it is an object and all of its keys must be strings.
+This function encodes a table `t` as a JSON array if a value `t[1]` is present or a number `t[0]` is present. If `t[0]` is present, its value is considered as the length of the array. Then the array may contain `nil` and those will be encoded as `null`. Otherwise, this function scans non `nil` values starting from index 1, up to the first `nil` it finds. When the table `t` is not an array, it is an object and all of its keys must be strings. In that case `__pairs` metamethod is respected, even on Lua 5.1.
 
 ### lunajson.newparser(input, saxtbl)
 ### lunajson.newfileparser(filename, saxtbl)
