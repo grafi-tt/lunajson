@@ -3,12 +3,12 @@ local lj = require 'lunajson'
 
 -- Ordered table support
 --   keylist[metafirstkey] = firstkey
---   keylist[metalastkey] = lastkey
 --   keylist[key] = nextkey
 --   keylist[lastkey] = nil
-local metafirstkey, metalastkey = {}, {}
+local metafirstkey = {}
 local function orderedtable(obj)
-	local keylist = { [metalastkey] = metafirstkey }
+	local keylist = {}
+	local lastkey = metafirstkey
 	local function onext(key2val, key)
 		local val
 		repeat
@@ -23,12 +23,12 @@ local function orderedtable(obj)
 	local metatable = {
 		__newindex = function(key2val, key, val)
 			rawset(key2val, key, val)
+			-- do the assignment first in case key == lastkey
+			keylist[lastkey] = key
 			if keylist[key] == nil then
-				local oldlastkey = keylist[metalastkey]
-				if key ~= oldlastkey then
-					keylist[oldlastkey] = key
-					keylist[metalastkey] = key
-				end
+				lastkey = key
+			else
+				keylist[lastkey] = nil
 			end
 		end,
 		__pairs = function(key2val)
