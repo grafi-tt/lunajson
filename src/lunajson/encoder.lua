@@ -1,11 +1,26 @@
 local error = error
-local byte, find, format, gsub, match = string.byte, string.find, string.format,  string.gsub, string.match
+local byte, find, format, gsub, match, rep = string.byte, string.find, string.format,  string.gsub, string.match, string.rep
 local concat = table.concat
 local tostring = tostring
 local pairs, type = pairs, type
 local setmetatable = setmetatable
 local huge, tiny = 1/0, -1/0
 
+local set_cache = setmetatable({}, { __weak = "k" })
+local basic = {
+	start_array = '[',
+	end_array = ']',
+	start_object = '{',
+	end_object = '}',
+	split_element = ','
+}
+local delim_tmpls = {
+    start_array = '[\n%s%%s',
+    end_array = '\n%%s]',
+    start_object = '{\n%s%%s',
+    end_object = '\n%%s}',
+    split_element = ',\n%s%%s'
+}
 local f_string_esc_pat
 if _VERSION == "Lua 5.1" then
 	-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
@@ -14,13 +29,13 @@ else
 	f_string_esc_pat = '[\0-\31"\\]'
 end
 
-local _ENV = nil
+local one_space = " "
 
-
-local function newencoder()
+local function newencoder(space)
+	local _ENV
 	local v, nullv
 	local i, builder, visited
-
+	local colon = ':'
 	local function f_tostring(v)
 		builder[i] = tostring(v)
 		i = i+1
@@ -86,7 +101,6 @@ local function newencoder()
 		builder[i+2] = '"'
 		i = i+3
 	end
-
 	local function f_table(o)
 		if visited[o] then
 			error("loop detected")
@@ -95,22 +109,22 @@ local function newencoder()
 
 		local tmp = o[0]
 		if type(tmp) == 'number' then -- arraylen available
-			builder[i] = '['
+			builder[i] = start_array
 			i = i+1
 			for j = 1, tmp do
 				doencode(o[j])
-				builder[i] = ','
+				builder[i] = split_element
 				i = i+1
 			end
 			if tmp > 0 then
 				i = i-1
 			end
-			builder[i] = ']'
+			builder[i] = end_array
 
 		else
 			tmp = o[1]
 			if tmp ~= nil then -- detected as array
-				builder[i] = '['
+				builder[i] = start_array
 				i = i+1
 				local j = 2
 				repeat
@@ -120,13 +134,13 @@ local function newencoder()
 						break
 					end
 					j = j+1
-					builder[i] = ','
+					builder[i] = split_element
 					i = i+1
 				until false
-				builder[i] = ']'
+				builder[i] = end_array
 
 			else -- detected as object
-				builder[i] = '{'
+				builder[i] = start_object
 				i = i+1
 				local tmp = i
 				for k, v in pairs(o) do
@@ -134,23 +148,53 @@ local function newencoder()
 						error("non-string key")
 					end
 					f_string(k)
-					builder[i] = ':'
+					builder[i] = colon
 					i = i+1
 					doencode(v)
-					builder[i] = ','
+					builder[i] = split_element
 					i = i+1
 				end
 				if i > tmp then
 					i = i-1
 				end
-				builder[i] = '}'
+				builder[i] = end_object
 			end
 		end
 
 		i = i+1
 		visited[o] = nil
 	end
-
+	if type(space) == "number" then space = rep(one_space, space) end
+	if type(space) ~= "string" or space == "" then _ENV = basic else
+		colon = colon .. " "
+		local f = f_table
+		local delim_set = set_cache[space]
+		if not delim_set then
+			delim_set = {}
+			set_cache[space] = {}
+		end
+		for k, v in pairs(delim_tmpls) do
+			delim_set[k] = format(v, space)
+		end
+		local depth = -1
+		function f_table(o)
+			depth = depth + 1
+			local delims = delim_set[depth]
+			if not delims then
+				delims = setmetatable({}, {
+					__index = function(t, k)
+						t[k] = format(delim_set[k], rep(space, depth))
+						return t[k]
+					end
+				})
+				delim_set[depth] = delims
+			end
+			_ENV = delims
+			f(o)
+			depth = depth - 1
+			_ENV = delim_set[depth]
+		end
+	end
 	local dispatcher = {
 		boolean = f_tostring,
 		number = f_number,
