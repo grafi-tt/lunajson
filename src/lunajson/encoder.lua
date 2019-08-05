@@ -17,7 +17,7 @@ end
 local _ENV = nil
 
 
-local function newencoder()
+local function newencoder(saxtbl)
 	local v, nullv
 	local i, builder, visited
 
@@ -93,7 +93,7 @@ local function newencoder()
 		end
 		visited[o] = true
 
-		local tmp = o[0]
+		local tmp = o.n
 		if type(tmp) == 'number' then -- arraylen available
 			builder[i] = '['
 			i = i+1
