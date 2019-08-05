@@ -179,7 +179,7 @@ local function newencoder()
 		return concat(builder)
 	end
 
-	return encode
+	return encode, dispatcher
 end
 
 return newencoder
