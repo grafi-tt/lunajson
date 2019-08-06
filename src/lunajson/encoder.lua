@@ -22,9 +22,14 @@ local delim_tmpls = {
     split_element = ',\n%s%%s'
 }
 local f_string_esc_pat
+local setenv
 if _VERSION == "Lua 5.1" then
 	-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
 	f_string_esc_pat = '[^ -!#-[%]^-\255]'
+	local setfenv = setfenv
+	function setenv(ENV)
+		setfenv(2, ENV)
+	end
 else
 	f_string_esc_pat = '[\0-\31"\\]'
 end
@@ -33,6 +38,7 @@ local one_space = " "
 
 local function newencoder(space)
 	local _ENV
+	local setenv = setenv or function(ENV) _ENV = ENV end
 	local v, nullv
 	local i, builder, visited
 	local colon = ':'
@@ -165,7 +171,7 @@ local function newencoder(space)
 		visited[o] = nil
 	end
 	if type(space) == "number" then space = rep(one_space, space) end
-	if type(space) ~= "string" or space == "" then _ENV = basic else
+	if type(space) ~= "string" or space == "" then setenv(basic) else
 		colon = colon .. " "
 		local f = f_table
 		local delim_set = set_cache[space]
@@ -189,10 +195,10 @@ local function newencoder(space)
 				})
 				delim_set[depth] = delims
 			end
-			_ENV = delims
+			setenv(delims)
 			f(o)
 			depth = depth - 1
-			_ENV = delim_set[depth]
+			setenv(delim_set[depth])
 		end
 	end
 	local dispatcher = {
