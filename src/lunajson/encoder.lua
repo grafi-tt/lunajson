@@ -115,18 +115,21 @@ local function newencoder(space)
 
 		local tmp = o[0]
 		if type(tmp) == 'number' then -- arraylen available
-			builder[i] = start_array
-			i = i+1
-			for j = 1, tmp do
-				doencode(o[j])
-				builder[i] = split_element
+			if tmp == 0 then
+				builder[i] = '[]'
+			else
+				builder[i] = start_array
 				i = i+1
+				for j = 1, tmp do
+					doencode(o[j])
+					builder[i] = split_element
+					i = i+1
+				end
+				if tmp > 0 then
+					i = i-1
+				end
+				builder[i] = end_array
 			end
-			if tmp > 0 then
-				i = i-1
-			end
-			builder[i] = end_array
-
 		else
 			tmp = o[1]
 			if tmp ~= nil then -- detected as array
@@ -160,10 +163,12 @@ local function newencoder(space)
 					builder[i] = split_element
 					i = i+1
 				end
+				i = i-1
 				if i > tmp then
-					i = i-1
+					builder[i] = end_object
+				else
+					builder[i] = '{}'
 				end
-				builder[i] = end_object
 			end
 		end
 
