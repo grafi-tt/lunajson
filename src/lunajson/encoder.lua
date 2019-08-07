@@ -22,14 +22,9 @@ local delim_tmpls = {
     split_element = ',\n%s%%s'
 }
 local f_string_esc_pat
-local setenv
 if _VERSION == "Lua 5.1" then
 	-- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
 	f_string_esc_pat = '[^ -!#-[%]^-\255]'
-	local setfenv = setfenv
-	function setenv(ENV)
-		setfenv(2, ENV)
-	end
 else
 	f_string_esc_pat = '[\0-\31"\\]'
 end
@@ -37,8 +32,7 @@ end
 local one_space = " "
 
 local function newencoder(space)
-	local _ENV
-	local setenv = setenv or function(ENV) _ENV = ENV end
+	local active_delims
 	local v, nullv
 	local i, builder, visited
 	local colon = ':'
@@ -118,22 +112,22 @@ local function newencoder(space)
 			if tmp == 0 then
 				builder[i] = '[]'
 			else
-				builder[i] = start_array
+				builder[i] = active_delims.start_array
 				i = i+1
 				for j = 1, tmp do
 					doencode(o[j])
-					builder[i] = split_element
+					builder[i] = active_delims.split_element
 					i = i+1
 				end
 				if tmp > 0 then
 					i = i-1
 				end
-				builder[i] = end_array
+				builder[i] = active_delims.end_array
 			end
 		else
 			tmp = o[1]
 			if tmp ~= nil then -- detected as array
-				builder[i] = start_array
+				builder[i] = active_delims.start_array
 				i = i+1
 				local j = 2
 				repeat
@@ -143,13 +137,13 @@ local function newencoder(space)
 						break
 					end
 					j = j+1
-					builder[i] = split_element
+					builder[i] = active_delims.split_element
 					i = i+1
 				until false
-				builder[i] = end_array
+				builder[i] = active_delims.end_array
 
 			else -- detected as object
-				builder[i] = start_object
+				builder[i] = active_delims.start_object
 				i = i+1
 				local tmp = i
 				for k, v in pairs(o) do
@@ -160,12 +154,12 @@ local function newencoder(space)
 					builder[i] = colon
 					i = i+1
 					doencode(v)
-					builder[i] = split_element
+					builder[i] = active_delims.split_element
 					i = i+1
 				end
 				i = i-1
 				if i > tmp then
-					builder[i] = end_object
+					builder[i] = active_delims.end_object
 				else
 					builder[i] = '{}'
 				end
@@ -176,7 +170,7 @@ local function newencoder(space)
 		visited[o] = nil
 	end
 	if type(space) == "number" then space = rep(one_space, space) end
-	if type(space) ~= "string" or space == "" then setenv(basic) else
+	if type(space) ~= "string" or space == "" then active_delims = basic else
 		colon = colon .. " "
 		local f = f_table
 		local delim_set = set_cache[space]
@@ -200,10 +194,10 @@ local function newencoder(space)
 				})
 				delim_set[depth] = delims
 			end
-			setenv(delims)
+			active_delims = delims
 			f(o)
 			depth = depth - 1
-			setenv(delim_set[depth])
+			active_delims = delim_set[depth]
 		end
 	end
 	local dispatcher = {
