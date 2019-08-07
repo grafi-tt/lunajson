@@ -29,6 +29,7 @@ else
 	f_string_esc_pat = '[\0-\31"\\]'
 end
 
+local _ENV = nil
 local one_space = " "
 
 local function newencoder()
