@@ -107,19 +107,19 @@ local function newencoder(space)
 		end
 		visited[o] = true
 
-		local tmp = o[0]
-		if type(tmp) == 'number' then -- arraylen available
-			if tmp == 0 then
+		local arraylen = o[0]
+		if type(arraylen) == 'number' then -- arraylen available
+			if arraylen == 0 then
 				builder[i] = '[]'
 			else
 				builder[i] = active_delims.start_array
 				i = i+1
-				for j = 1, tmp do
+				for j = 1, arraylen do
 					doencode(o[j])
 					builder[i] = active_delims.split_element
 					i = i+1
 				end
-				if tmp > 0 then
+				if arraylen > 0 then
 					i = i-1
 				end
 				builder[i] = active_delims.end_array
