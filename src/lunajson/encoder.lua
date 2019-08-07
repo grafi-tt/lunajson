@@ -31,11 +31,11 @@ end
 
 local one_space = " "
 
-local function newencoder(space)
+local function newencoder()
 	local active_delims
-	local v, nullv
+	local v, nullv, colon
 	local i, builder, visited
-	local colon = ':'
+	
 	local function f_tostring(v)
 		builder[i] = tostring(v)
 		i = i+1
@@ -101,7 +101,7 @@ local function newencoder(space)
 		builder[i+2] = '"'
 		i = i+3
 	end
-	local function f_table(o)
+	local function basic_f_table(o)
 		if visited[o] then
 			error("loop detected")
 		end
@@ -169,42 +169,12 @@ local function newencoder(space)
 		i = i+1
 		visited[o] = nil
 	end
-	if type(space) == "number" then space = rep(one_space, space) end
-	if type(space) ~= "string" or space == "" then active_delims = basic else
-		colon = colon .. " "
-		local f = f_table
-		local delim_set = set_cache[space]
-		if not delim_set then
-			delim_set = {}
-			set_cache[space] = {}
-		end
-		for k, v in pairs(delim_tmpls) do
-			delim_set[k] = format(v, space)
-		end
-		local depth = -1
-		function f_table(o)
-			depth = depth + 1
-			local delims = delim_set[depth]
-			if not delims then
-				delims = setmetatable({}, {
-					__index = function(t, k)
-						t[k] = format(delim_set[k], rep(space, depth))
-						return t[k]
-					end
-				})
-				delim_set[depth] = delims
-			end
-			active_delims = delims
-			f(o)
-			depth = depth - 1
-			active_delims = delim_set[depth]
-		end
-	end
+	local f_table
 	local dispatcher = {
 		boolean = f_tostring,
 		number = f_number,
 		string = f_string,
-		table = f_table,
+		table = function(...) return f_table(...) end,
 		__index = function()
 			error("invalid type value")
 		end
@@ -219,10 +189,47 @@ local function newencoder(space)
 		end
 		return dispatcher[type(v)](v)
 	end
-
-	local function encode(v_, nullv_)
-		v, nullv = v_, nullv_
+	local delim_set, space, depth
+	local delims_meta = {}
+	function delims_meta:__index(k)
+		local s = format(delim_set[k], rep(space, depth))
+		self[k] = s
+		return s
+	end
+	local function spaced_f_table(o)
+		depth = depth + 1
+		local delims = delim_set[depth]
+		if not delims then
+			delims = setmetatable({}, delims_meta)
+			delim_set[depth] = delims
+		end
+		active_delims = delims
+		basic_f_table(o)
+		depth = depth - 1
+		active_delims = delim_set[depth]
+	end
+	local function encode(v_, nullv_, _space)
+		v, nullv, space = v_, nullv_, _space
 		i, builder, visited = 1, {}, {}
+		
+		if type(space) == "number" then space = rep(one_space, space) end
+		if type(space) ~= "string" or space == "" then
+			active_delims = basic
+			f_table = basic_f_table
+			colon = ":"
+		else
+			colon = ": "
+			depth = -1
+			f_table = spaced_f_table
+			delim_set = set_cache[space]
+			if not delim_set then
+				delim_set = {}
+				set_cache[space] = {}
+				for k, v in pairs(delim_tmpls) do
+					delim_set[k] = format(v, space)
+				end
+			end
+		end
 
 		doencode(v)
 		return concat(builder)
