@@ -529,7 +529,9 @@ local function newparser(src, saxtbl)
 		sax_startarray()
 
 		spaces()
-		if byte(json, pos) ~= 0x5D then  -- check closing bracket ']' which means the array empty
+		if byte(json, pos) == 0x5D then  -- check closing bracket ']' which means the array empty
+			pos = pos+1
+		else
 			local newpos
 			while true do
 				f = dispatcher[byte(json, pos)]  -- parse value
@@ -574,7 +576,9 @@ local function newparser(src, saxtbl)
 		sax_startobject()
 
 		spaces()
-		if byte(json, pos) ~= 0x7D then  -- check closing bracket '}' which means the object empty
+		if byte(json, pos) == 0x7D then  -- check closing bracket '}' which means the object empty
+			pos = pos+1
+		else
 			local newpos
 			while true do
 				if byte(json, pos) ~= 0x22 then
