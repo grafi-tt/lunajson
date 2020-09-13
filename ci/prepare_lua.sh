@@ -2,7 +2,6 @@
 
 . "${0%/*}/lua_impls.sh"
 
-
 build_lua() {
 	rm -rf "${lua_impl}" || exit $?
 	tar xzf "${lua_archive}" || exit $?
@@ -14,7 +13,6 @@ build_lua() {
 	esac
 	cd .. || exit 1
 }
-
 
 mkdir -p "${lua_base}" || exit $?
 cd "${lua_base}" || exit 1

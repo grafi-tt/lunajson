@@ -46,7 +46,8 @@ download() {
 		computed_checksum="`openssl sha256 "${archive}" | cut -d' ' -f2`"
 	fi
 	if [ "${computed_checksum}" = 'x' ]; then
-		echo "WARNING: checksum not validated because sha256sum and openssl command not found" >&2
+		echo "sha256sum or openssl command not found!" >&2
+		exit 1
 	elif [ "${computed_checksum}" != "${checksum}" ]; then
 		echo "Checksum validation of ${archive} failed!" >&2
 		echo "Expected: ${checksum}" >&2
