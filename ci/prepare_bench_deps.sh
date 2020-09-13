@@ -3,9 +3,9 @@
 . "${0%/*}/lua_impls.sh"
 
 
-lpeg_archive="lpeg-1.0.1.tar.gz"
+lpeg_archive="lpeg-1.0.2.tar.gz"
 lpeg_url="http://www.inf.puc-rio.br/~roberto/lpeg/${lpeg_archive}"
-lpeg_checksum="62d9f7a9ea3c1f215c77e0cadd8534c6ad9af0fb711c3f89188a8891c72f026b"
+lpeg_checksum="48d66576051b6c78388faad09b70493093264588fcd0f258ddaab1cdd4a15ffe"
 
 install_lpeg() {
 	tar xvf "${lpeg_archive}" -C "${lua_impl}" || exit $?
@@ -14,9 +14,9 @@ install_lpeg() {
 	mv -f makefile.new makefile || exit $?
 	case "${platform}" in
 		linux | freebsd )
-			make linux || exit $?;;
+			make -j linux || exit $?;;
 		macosx )
-			make macosx || exit $?;;
+			make -j macosx || exit $?;;
 		* ) exit 1;;
 	esac
 	mv lpeg.so "${lua_lib}" || exit $?
@@ -37,7 +37,7 @@ install_cjson() {
 		sed -e "s/^CJSON_LDFLAGS.*/CJSON_LDFLAGS = -bundle -undefined dynamic_lookup/" Makefile > Makefile.new || exit $?
 		mv Makefile.new Makefile || exit $?
 	fi
-	make || exit $?
+	make -j || exit $?
 	mv cjson.so "${lua_lib}" || exit $?
 	cd ../.. || exit 1
 }
