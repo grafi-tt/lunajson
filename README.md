@@ -1,7 +1,7 @@
 # ![Lunajson](logo/lunajson.png)
 [![CircleCI](https://circleci.com/gh/grafi-tt/lunajson.svg?style=shield)](https://circleci.com/gh/grafi-tt/lunajson)
 
-Lunajson features SAX-style JSON parser and simple JSON decoder/encoder. It is tested on Lua 5.1, Lua 5.2, Lua 5.3, and LuaJIT 2.0.
+Lunajson features SAX-style JSON parser and simple JSON decoder/encoder. It is tested on Lua 5.1, Lua 5.2, Lua 5.3, Lua 5.4, and LuaJIT 2.0.
 It is written only in pure Lua and has no dependencies. Even so, decoding speed matches lpeg-based JSON implementations because it is carefully optimized.
 The parser and decoder reject input that is not conformant to the JSON specification (ECMA-404), and the encoder always yields conformant output.
 The parser and decoder also handle UTF/Unicode surrogate pairs correctly.
@@ -73,12 +73,12 @@ Return the byte of current position as a number. If input is ended, it returns `
 Return the `n`-length string starting from current position, and increase the index by `n`. If the input ends, the returned string and the updated position will be truncated.
 
 ## Benchmark
-Following graphs are the results of the benchmark, decoding [`simple.json`](test/decodeparse/benchjson/simple.json) (about 750KiB) 100 times and encoding [`simple.lua`](test/encode/benchdata/simple.lua) (the decoded result of `simple.json`) 100 times. I conducted benchmarks of lunajson 1.0, [dkjson 2.5](http://dkolf.de/src/dkjson-lua.fsl/home) and [Lua CJSON 2.1.0](http://www.kyne.com.au/~mark/software/lua-cjson.php). Dkjson is a popular JSON encoding/decoding library in Lua, which is written in Lua and optionally uses [lpeg](http://www.inf.puc-rio.br/~roberto/lpeg/) to spped up decoding. Lua CJSON is a JSON encoding/decoding library implemented in C and is inherently fast.
+Following graphs are the results of the benchmark, decoding [`simple.json`](test/decodeparse/benchjson/simple.json) (about 750KiB) 100 times and encoding [`simple.lua`](test/encode/benchdata/simple.lua) (the decoded result of `simple.json`) 100 times. I conducted benchmarks of lunajson 1.2.3, [dkjson 2.5](http://dkolf.de/src/dkjson-lua.fsl/home) and [Lua CJSON 2.1.0](http://www.kyne.com.au/~mark/software/lua-cjson.php). Dkjson is a popular JSON encoding/decoding library in Lua, which is written in Lua and optionally uses [lpeg 1.0.2](http://www.inf.puc-rio.br/~roberto/lpeg/) to spped up decoding. Lua CJSON is a JSON encoding/decoding library implemented in C and is inherently fast.
 
 ![The graph of decoding benchmark results](result/decode-simple.png)
 
 ![The graph of encoding benchmark results](result/encode-simple.png)
 
-This benchmark is conducted in my desktop machine that equips Core i5 3550K and DDR3-1600 memory. Lua implementations and concerning modules are compiled by GCC 4.9.2 with `-O2 -march=ivybridge -mtune=ivybridge` options. The versions of lua implementations are the newest official releases at the time of benchmark. The version of lpeg is 0.12.2.
+This benchmark is conducted in my desktop machine that equips Ryzen 7 2700X and DDR4-3200 memory. Lua interpreters and modules are compiled by GCC 8.4.0 with default option set by Makefile.
 
 In this benchmark Lunajson performs well considering that it is implemented only in standard Lua, especially in LuaJIT 2.0 benchmark. Lunajson also supplies incremental parsing in a SAX-style API, therfore you don't have to load whole large JSON files into memory in order to scan the information you're interested in from them. Lunajson is especially useful when non-standard libraries cannot be used easily or incremental parsing is favored.

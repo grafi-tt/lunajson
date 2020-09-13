@@ -2,79 +2,99 @@
 lua_impl: lua-5.1.5
 decode:
   lunajson:
-    simple: 9.774
+    simple: 8.055
   lunajson_sax:
-    simple: 12.059
-  dkjson_lpeg:
-    simple: 9.016
+    simple: 11.554
   dkjson_pure:
-    simple: 9.032
+    simple: 20.336
+  dkjson_lpeg:
+    simple: 6.679
   cjson:
-    simple: 1.143
+    simple: 0.993
 encode:
   lunajson:
-    simple: 9.535
+    simple: 7.220
   dkjson:
-    simple: 14.390
+    simple: 11.863
   cjson:
-    simple: 1.993
+    simple: 1.188
 ---
 lua_impl: lua-5.2.4
 decode:
   lunajson:
-    simple: 10.440
+    simple: 8.119
   lunajson_sax:
-    simple: 12.561
-  dkjson_lpeg:
-    simple: 8.469
+    simple: 11.430
   dkjson_pure:
-    simple: 8.483
+    simple: 21.489
+  dkjson_lpeg:
+    simple: 6.515
   cjson:
-    simple: 1.199
+    simple: 1.059
 encode:
   lunajson:
-    simple: 8.949
+    simple: 6.848
   dkjson:
-    simple: 15.204
+    simple: 12.259
   cjson:
-    simple: 2.036
+    simple: 1.235
 ---
-lua_impl: lua-5.3.4
+lua_impl: lua-5.3.5
 decode:
   lunajson:
-    simple: 9.021
+    simple: 7.458
   lunajson_sax:
-    simple: 10.494
-  dkjson_lpeg:
-    simple: 7.819
+    simple: 10.221
   dkjson_pure:
-    simple: 7.821
+    simple: 20.221
+  dkjson_lpeg:
+    simple: 6.197
   cjson:
-    simple: 1.166
+    simple: 1.056
 encode:
   lunajson:
-    simple: 8.771
+    simple: 7.010
   dkjson:
-    simple: 14.689
+    simple: 11.448
   cjson:
-    simple: 2.027
+    simple: 1.235
+---
+lua_impl: lua-5.4.0
+decode:
+  lunajson:
+    simple: 7.235
+  lunajson_sax:
+    simple: 9.499
+  dkjson_pure:
+    simple: 18.559
+  dkjson_lpeg:
+    simple: 6.335
+  cjson:
+    simple: 1.105
+encode:
+  lunajson:
+    simple: 6.405
+  dkjson:
+    simple: 11.043
+  cjson:
+    simple: 1.204
 ---
 lua_impl: LuaJIT-2.0.5
 decode:
   lunajson:
-    simple: 5.166
+    simple: 4.819
   lunajson_sax:
-    simple: 6.812
-  dkjson_lpeg:
-    simple: 5.416
+    simple: 7.181
   dkjson_pure:
-    simple: 5.415
+    simple: 9.724
+  dkjson_lpeg:
+    simple: 4.043
   cjson:
-    simple: 0.855
+    simple: 0.737
 encode:
   lunajson:
-    simple: 5.760
+    simple: 4.256
   dkjson:
-    simple: 8.675
+    simple: 7.054
   cjson:
-    simple: 1.935
+    simple: 1.153
