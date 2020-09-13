@@ -55,11 +55,15 @@ install_dkjson() {
 cd "${lua_base}" || exit 1
 
 for dep in lpeg cjson dkjson; do
-	update=n
 	eval dep_archive='"$'${dep}_archive'"'
 	eval dep_url='"$'${dep}_url'"'
 	eval dep_checksum='"$'${dep}_checksum'"'
-	download "${dep_archive}" "${dep_url}" "${dep_checksum}"
+	if [ -e "${dep_archive}" ]; then
+		update=n
+	else
+		update=y
+	fi
+	download "${dep_archive}" "${dep_url}" "${dep_checksum}" || exit $?
 	for lua_impl in ${lua_impls}; do
 		set_lua_vars
 		mkdir -p "${lua_lib}" || exit $?
