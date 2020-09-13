@@ -1,3 +1,7 @@
+# 1.2.3
+
+* Fix SAX decoding of empty array/object (Thanks to @treahard and @Benjamin-Dobell)
+
 # 1.2.2
 
 * Accept multiple spaces after colon (this bug introduced in 1.2.1)

@@ -2,7 +2,6 @@
 
 . "${0%/*}/../ci/lua_impls.sh"
 
-
 err=0
 for lua_impl in $lua_impls; do
 	set_lua_vars
