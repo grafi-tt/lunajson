@@ -7,8 +7,8 @@ build_lua() {
 	tar xzf "${lua_archive}" || exit $?
 	cd "${lua_impl}" || exit 1
 	case "${lua_impl}" in
-		lua-* ) make "${platform}" || exit $?;;
-		LuaJIT-* ) make || exit $?;;
+		lua-* ) make -j "${platform}" || exit $?;;
+		LuaJIT-* ) make -j || exit $?;;
 		* ) exit 1;;
 	esac
 	cd .. || exit 1
