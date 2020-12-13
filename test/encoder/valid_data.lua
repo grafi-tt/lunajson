@@ -1,3 +1,4 @@
 return {
 	'nonloop',
+	'ordered',
 }

@@ -85,10 +85,31 @@ local function test_invalid(decode, fn)
 	end
 end
 
+local function test_order(decode, ordered_json, order)
+	local function check()
+		local obj = decode(ordered_json, nullv, true)
+		local i = 0
+		for k, _ in getmetatable(obj).__pairs(obj) do
+			i = i + 1
+			if k ~= order[i] then
+				error('order differs at ' .. tostring(i) .. 'th key')
+			end
+		end
+		if i ~= #order then
+			error('length differs')
+		end
+	end
+	local ok, err = pcall(check)
+	if not ok then
+		return string.format('%q', err)
+	end
+end
+
 
 local decoders = util.load('decoders.lua')
 local valid_data = util.load('valid_data.lua')
 local invalid_data = util.load('invalid_data.lua')
+local ordered_json, order = util.load('ordered_data.lua')
 
 local iserr = false
 io.write('decode:\n')
@@ -109,7 +130,6 @@ for _, decoder in ipairs(decoders) do
 	for _, fn in ipairs(invalid_data) do
 		io.write('    ' .. fn  .. ': ')
 		fn = 'invalid_data/' .. fn
-		test_invalid(decode, fn)
 		local err = test_invalid(decode, fn)
 		if err then
 			iserr = true
@@ -117,6 +137,14 @@ for _, decoder in ipairs(decoders) do
 		else
 			io.write('ok\n')
 		end
+	end
+	io.write('    order: ')
+	local err = test_order(decode, ordered_json, order)
+	if err then
+		iserr = true
+		io.write(err .. '\n')
+	else
+		io.write('ok\n')
 	end
 end
 

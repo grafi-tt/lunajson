@@ -1,7 +1,7 @@
 local util = require 'util'
 
 
-function test_valid(encode, fn)
+local function test_valid(encode, fn)
 	local data = util.load(fn .. '.lua')
 	local json = encode(data)
 	local ans_fp = util.open(fn ..  '.json')
@@ -15,7 +15,7 @@ function test_valid(encode, fn)
 	end
 end
 
-function test_invalid(encode, fn)
+local function test_invalid(encode, fn)
 	local data = util.load(fn .. '.lua')
 	local ok, err = pcall(encode, data)
 	if ok then

@@ -17,6 +17,33 @@ end
 local _ENV = nil
 
 
+local function patchpairs()
+	local needpatch = true
+	local metatable = {
+		__pairs = function()
+			needpatch = false
+			return function() end, nil, nil
+		end
+	}
+	local tbl = setmetatable({}, metatable)
+	pairs(tbl)
+	if needpatch then
+		local orig_pairs = pairs
+		function pairs(tbl)
+			local metatable = getmetatable(tbl)
+			if metatable ~= nil then
+				local f = metatable.__pairs
+				if f ~= nil then
+					return f(tbl)
+				end
+			end
+			return orig_pairs(tbl)
+		end
+	end
+end
+patchpairs()
+
+
 local function newencoder()
 	local v, nullv
 	local i, builder, visited

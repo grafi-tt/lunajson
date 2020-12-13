@@ -1,6 +1,45 @@
 local lj = require 'lunajson'
 
-return function(gen, nv)
+
+-- Ordered table support
+--   keylist[metafirstkey] = firstkey
+--   keylist[key] = nextkey
+--   keylist[lastkey] = nil
+local metafirstkey = {}
+local function orderedtable(obj)
+	local keylist = {}
+	local lastkey = metafirstkey
+	local function onext(key2val, key)
+		local val
+		repeat
+			key = keylist[key]
+			if key == nil then
+				return
+			end
+			val = key2val[key]
+		until val ~= nil
+		return key, val
+	end
+	local metatable = {
+		__newindex = function(key2val, key, val)
+			rawset(key2val, key, val)
+			-- do the assignment first in case key == lastkey
+			keylist[lastkey] = key
+			if keylist[key] == nil then
+				lastkey = key
+			else
+				keylist[lastkey] = nil
+			end
+		end,
+		__pairs = function(key2val)
+			return onext, key2val, metafirstkey
+		end
+	}
+	return setmetatable(obj, metatable)
+end
+
+
+return function(gen, nv, preserveorder)
 	local saxtbl = {}
 	local current = {}
 	do
@@ -31,6 +70,9 @@ return function(gen, nv)
 		function saxtbl.startobject()
 			push()
 			current = {}
+			if preserveorder then
+				current = orderedtable(current)
+			end
 			key = nil
 		end
 		function saxtbl.key(s)

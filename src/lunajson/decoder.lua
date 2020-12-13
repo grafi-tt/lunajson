@@ -1,5 +1,5 @@
-local setmetatable, tonumber, tostring =
-      setmetatable, tonumber, tostring
+local rawset, setmetatable, tonumber, tostring =
+      rawset, setmetatable, tonumber, tostring
 local floor, inf =
       math.floor, math.huge
 local mininteger, tointeger =
@@ -22,8 +22,46 @@ end
 local _ENV = nil
 
 
+-- Ordered table support
+--   keylist[metafirstkey] = firstkey
+--   keylist[key] = nextkey
+--   keylist[lastkey] = nil
+local metafirstkey = {}
+local function orderedtable(obj)
+	local keylist = {}
+	local lastkey = metafirstkey
+	local function onext(key2val, key)
+		local val
+		repeat
+			key = keylist[key]
+			if key == nil then
+				return
+			end
+			val = key2val[key]
+		until val ~= nil
+		return key, val
+	end
+	local metatable = {
+		__newindex = function(key2val, key, val)
+			rawset(key2val, key, val)
+			-- do the assignment first in case key == lastkey
+			keylist[lastkey] = key
+			if keylist[key] == nil then
+				lastkey = key
+			else
+				keylist[lastkey] = nil
+			end
+		end,
+		__pairs = function(key2val)
+			return onext, key2val, metafirstkey
+		end
+	}
+	return setmetatable(obj, metatable)
+end
+
+
 local function newdecoder()
-	local json, pos, nullv, arraylen, rec_depth
+	local json, pos, nullv, arraylen, preserveorder, rec_depth
 
 	-- `f` is the temporary for dispatcher[c] and
 	-- the dummy for the first return value of `find`
@@ -405,6 +443,9 @@ local function newdecoder()
 			decode_error('too deeply nested json (> 1000)')
 		end
 		local obj = {}
+		if preserveorder then
+			obj = orderedtable(obj)
+		end
 
 		pos = match(json, '^[ \n\r\t]*()', pos)
 		if byte(json, pos) == 0x7D then  -- check closing bracket '}' which means the object empty
@@ -488,8 +529,8 @@ local function newdecoder()
 	--[[
 		run decoder
 	--]]
-	local function decode(json_, pos_, nullv_, arraylen_)
-		json, pos, nullv, arraylen = json_, pos_, nullv_, arraylen_
+	local function decode(json_, pos_, nullv_, arraylen_, preserveorder_)
+		json, pos, nullv, arraylen, preserveorder = json_, pos_, nullv_, arraylen_, preserveorder_
 		rec_depth = 0
 
 		pos = match(json, '^[ \n\r\t]*()', pos)

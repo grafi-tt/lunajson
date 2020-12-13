@@ -1,6 +1,6 @@
 local sax_decoder = require 'sax_decoder'
 
-return function(json, nv)
+return function(json, nv, preserveorder)
 	local i = 1
 	local j = 0
 	local function gen()
@@ -15,5 +15,5 @@ return function(json, nv)
 		end
 		return s
 	end
-	return sax_decoder(gen, nv)
+	return sax_decoder(gen, nv, preserveorder)
 end
