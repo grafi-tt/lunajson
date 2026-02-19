@@ -11,7 +11,8 @@ set_lua_vars() {
 			lua_bin="${lua_impl}/src/lua"
 			;;
 		LuaJIT-* )
-			lua_url="http://luajit.org/download/${lua_archive}"
+			#lua_url="http://luajit.org/download/${lua_archive}"
+			lua_url=https://ftp.jaist.ac.jp/pub/macports/distfiles/luajit/${lua_archive}
 			lua_bin="${lua_impl}/src/luajit"
 			;;
 		* ) exit 1 ;;

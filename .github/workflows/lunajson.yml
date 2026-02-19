@@ -1,0 +1,30 @@
+name: Lunajson CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache lua impls
+      id: cache-lua
+      uses: actions/cache@v4
+      env:
+        cache-name: cache-lua
+      with:
+        path: ~/lua
+        key: ${{ runner.os }}-${{ hashFiles('ci/lua_impls.txt') }}
+
+    - name: Prepare lua impls
+      run: |
+        cp ci/lua_base.sh.example lua_base.sh
+        ci/prepare_lua.sh
+
+    - name: Run test
+      run: test/run.sh

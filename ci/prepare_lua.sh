@@ -7,8 +7,12 @@ build_lua() {
 	tar xzf "${lua_archive}" || exit $?
 	cd "${lua_impl}" || exit 1
 	case "${lua_impl}" in
-		lua-* ) make -j "${platform}" || exit $?;;
-		LuaJIT-* ) make -j || exit $?;;
+		lua-* )
+			sed -i -e '/^#define LUA_USE_READLINE/d' src/luaconf.h && \
+			sed -i -e 's/-lhistory//' -e 's/-lncurses//' -e 's/-lreadline//' src/Makefile && \
+			make -j "${platform}" || exit $?;;
+		LuaJIT-* )
+			make -j || exit $?;;
 		* ) exit 1;;
 	esac
 	cd .. || exit 1
