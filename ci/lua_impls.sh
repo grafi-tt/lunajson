@@ -11,8 +11,7 @@ set_lua_vars() {
 			lua_bin="${lua_impl}/src/lua"
 			;;
 		LuaJIT-* )
-			#lua_url="http://luajit.org/download/${lua_archive}"
-			lua_url=https://ftp.jaist.ac.jp/pub/macports/distfiles/luajit/${lua_archive}
+			lua_url=https://github.com/luajit/luajit/archive/${lua_impl#LuaJIT-}.tar.gz
 			lua_bin="${lua_impl}/src/luajit"
 			;;
 		* ) exit 1 ;;
@@ -34,7 +33,7 @@ download() {
 	url="$2"
 	checksum="$3"
 	if [ ! -e "${archive}" ]; then
-		wget "${url}" || exit $?
+		wget "${url}" -O "${archive}" || exit $?
 		if [ ! -e "${archive}" ]; then
 			echo "${archive} unavailable" >&2
 			exit 1
