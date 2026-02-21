@@ -1,4 +1,5 @@
 #!/bin/sh
+set -x
 
 . "${0%/*}/lua_impls.sh"
 
