@@ -1,7 +1,7 @@
 # ![Lunajson](logo/lunajson.png)
 ![CI status badge](https://github.com/grafi-tt/lunajson/actions/workflows/lunajson.yml/badge.svg?branch=master)
 
-Lunajson features SAX-style JSON parser and simple JSON decoder/encoder. It is tested on Lua 5.1, Lua 5.2, Lua 5.3, Lua 5.4, and LuaJIT 2.0.
+Lunajson features SAX-style JSON parser and simple JSON decoder/encoder. It is tested on Lua 5.1, Lua 5.2, Lua 5.3, Lua 5.4, and LuaJIT 2.1.
 It is written only in pure Lua and has no dependencies. Even so, decoding speed matches lpeg-based JSON implementations because it is carefully optimized.
 The parser and decoder reject input that is not conformant to the JSON specification (ECMA-404), and the encoder always yields conformant output.
 The parser and decoder also handle UTF/Unicode surrogate pairs correctly.
