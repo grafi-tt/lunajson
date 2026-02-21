@@ -23,6 +23,11 @@ jobs:
           ${{ matrix.shell }}
 
     steps:
+    - name: Disable git autocrlf
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+      run: git config --global core.autocrlf input
+
     - uses: actions/checkout@v4
 
     - name: Cache lua impls
