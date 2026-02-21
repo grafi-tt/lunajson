@@ -8,8 +8,26 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, platform: linux, shell: bash }
+          - { os: windows-latest, platform: mingw, shell: 'msys2 {0}' }
+
+    defaults:
+      run:
+        shell:
+          ${{ matrix.shell }}
+
     steps:
+    - name: Disable git autocrlf
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+      run: git config --global core.autocrlf input
+
     - uses: actions/checkout@v4
 
     - name: Cache lua impls
@@ -19,11 +37,17 @@ jobs:
         cache-name: cache-lua
       with:
         path: ~/lua
-        key: ${{ runner.os }}-${{ hashFiles('ci/lua_impls.txt') }}
+        key: ${{ matrix.os }}-${{ hashFiles('ci/lua_impls.txt') }}
+
+    - name: Install msys
+      if: matrix.os == 'windows-latest'
+      uses: msys2/setup-msys2@v2
+      with:
+        install: gcc make
 
     - name: Prepare lua impls
       run: |
-        cp ci/lua_base.sh.example lua_base.sh
+        sed -e "s/^platform=.*/platform=${{ matrix.platform }}/" ci/lua_base.sh.example > lua_base.sh
         ci/prepare_lua.sh
 
     - name: Run test
