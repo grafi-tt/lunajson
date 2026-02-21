@@ -37,6 +37,8 @@ jobs:
     - name: Install msys
       if: matrix.os == 'windows-latest'
       uses: msys2/setup-msys2@v2
+      with:
+        install: gcc make
 
     - name: Prepare lua impls
       run: |
