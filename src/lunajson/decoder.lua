@@ -392,7 +392,7 @@ local function newdecoder()
 		end
 
 		if arraylen then -- commit the length of the array if `arraylen` is set
-			ary[0] = i
+			ary.n = i
 		end
 		rec_depth = rec_depth - 1
 		return ary
