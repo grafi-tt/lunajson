@@ -48,6 +48,9 @@ local function isomorphic(u, v)
 			if u ~= v then
 				error('different values: ' .. tostring(u) .. ' and ' .. tostring(v))
 			end
+			if u == 0 and 1/u ~= 1/v then  -- distinguish 0.0 and -0.0
+				error('different signs of zero: ' .. tostring(u) .. ' and ' .. tostring(v))
+			end
 		end
 	end
 end
@@ -119,5 +122,7 @@ for _, decoder in ipairs(decoders) do
 		end
 	end
 end
+
+iserr = util.load('regression.lua') or iserr
 
 return iserr

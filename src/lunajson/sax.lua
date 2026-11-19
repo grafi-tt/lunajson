@@ -22,6 +22,11 @@ end
 local type, unpack = type, table.unpack or unpack
 local open = io.open
 
+-- -0.0 must be made at runtime: as a literal, Lua 5.1/5.2 merges it with 0
+-- (and Lua 5.3 with 0.0) into one constant when they appear in one function
+local minus_zero = 0.0
+minus_zero = -minus_zero
+
 local _ENV = nil
 
 
@@ -163,11 +168,14 @@ local function newparser(src, saxtbl)
 	local radixmark = match(tostring(0.5), '[^0-9]')
 	local fixedtonumber = tonumber
 	if radixmark ~= '.' then
-		if find(radixmark, '%W') then
-			radixmark = '%' .. radixmark
+		-- only '%' is special in a replacement string
+		if radixmark == '%' then
+			radixmark = '%%'
 		end
 		fixedtonumber = function(s)
-			return tonumber(gsub(s, '.', radixmark))
+			-- replace periods only, and drop the second return value of gsub
+			-- so that it is not passed to tonumber as the base
+			return tonumber((gsub(s, '%.', radixmark)))
 		end
 	end
 
@@ -228,7 +236,11 @@ local function newparser(src, saxtbl)
 		local num = char(unpack(buf))
 		num = fixedtonumber(num)
 		if mns then
-			num = -num
+			if num == 0 then
+				num = minus_zero  -- negating integer 0 does not give -0.0 in Lua 5.3+
+			else
+				num = -num
+			end
 			if num == mininteger and is_int then
 				num = mininteger
 			end
@@ -247,7 +259,7 @@ local function newparser(src, saxtbl)
 			end
 			if c == '' then
 				if mns then
-					return sax_number(-0.0)
+					return sax_number(minus_zero)
 				end
 				return sax_number(0)
 			end
@@ -261,7 +273,7 @@ local function newparser(src, saxtbl)
 						return generic_number(mns)
 					end
 					if mns then
-						return sax_number(-0.0)
+						return sax_number(minus_zero)
 					end
 					return sax_number(0.0)
 				end
@@ -395,6 +407,11 @@ local function newparser(src, saxtbl)
 			        f_str_hextbl[c3-47] * 0x10 +
 			        f_str_hextbl[c4-47]
 			if ucode ~= inf then
+				-- a pending 1st surrogate must be followed by a 2nd one
+				if f_str_surrogate_prev ~= 0 and (ucode < 0xDC00 or 0xE000 <= ucode) then
+					f_str_surrogate_prev = 0
+					surrogate_first_error()
+				end
 				if ucode < 0x80 then  -- 1byte
 					if rest then
 						return char(ucode, rest)
@@ -455,6 +472,7 @@ local function newparser(src, saxtbl)
 					parse_error("2nd surrogate pair byte appeared without 1st")
 				end
 			end
+			f_str_surrogate_prev = 0
 			parse_error("invalid unicode codepoint literal")
 		end
 		if f_str_surrogate_prev ~= 0 then
@@ -504,6 +522,8 @@ local function newparser(src, saxtbl)
 			-- As we need to ensure that every first surrogate pair byte is
 			-- immediately followed by second one, we grab upto 5 characters and
 			-- check the last for this purpose.
+			-- reset the state, as an error in a previous string may leave it dirty
+			f_str_surrogate_prev = 0
 			str = gsub(str, '\\(.)([^\\]?[^\\]?[^\\]?[^\\]?[^\\]?)', f_str_subst)
 			if f_str_surrogate_prev ~= 0 then
 				f_str_surrogate_prev = 0
