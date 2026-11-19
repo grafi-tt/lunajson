@@ -8,6 +8,7 @@ return {
 	'number/0p0e',
 	'number/mininteger',
 	'number/mininteger-f',
+	'number/minus0',
 	'object/empty',
 	'object/nested-empty',
 	'string/backslash',
