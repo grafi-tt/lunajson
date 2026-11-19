@@ -318,7 +318,12 @@ local function newdecoder()
 	end
 
 	-- caching interpreted keys for speed
-	local f_str_keycache = setmetatable({}, {__mode="v"})
+	-- The cache is kept across calls, so its size must be bounded: strings are
+	-- never removed from weak tables, and an unbounded cache would keep every
+	-- key ever decoded alive. Only short keys are cached, and the cache is
+	-- renewed when it gets full.
+	local f_str_keycache, f_str_keycache_n = {}, 0
+	local f_str_keycache_maxlen, f_str_keycache_maxn = 64, 4096
 
 	local function f_str(iskey)
 		local newpos = pos
@@ -368,7 +373,11 @@ local function newdecoder()
 				decode_error("1st surrogate pair byte not continued by 2nd")
 			end
 		end
-		if iskey then  -- commit key cache
+		if iskey and #tmppos <= f_str_keycache_maxlen then  -- commit key cache
+			if f_str_keycache_n >= f_str_keycache_maxn then
+				f_str_keycache, f_str_keycache_n = {}, 0
+			end
+			f_str_keycache_n = f_str_keycache_n + 1
 			f_str_keycache[tmppos] = str
 		end
 		return str
