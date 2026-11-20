@@ -20,6 +20,7 @@ else
 end
 
 local type, unpack = type, table.unpack or unpack
+local concat = table.concat
 local open = io.open
 
 -- -0.0 must be made at runtime: as a literal, Lua 5.1/5.2 merges it with 0
@@ -45,6 +46,9 @@ local function newparser(src, saxtbl)
 		json = src
 		jsonlen = #json
 		jsonnxt = function()
+			-- advance the position past the end, as done for function sources
+			acc = acc + jsonlen
+			pos = 1
 			json = ''
 			jsonlen = 0
 			jsonnxt = nop
@@ -226,8 +230,8 @@ local function newparser(src, saxtbl)
 			end
 			repeat nxt() until not (c and 0x30 <= c and c < 0x3A)
 		end
-		if c and (0x41 <= c and c <= 0x5B or
-		          0x61 <= c and c <= 0x7B or
+		if c and (0x41 <= c and c <= 0x5A or  -- A-Z
+		          0x61 <= c and c <= 0x7A or  -- a-z
 		          c == 0x2B or c == 0x2D or c == 0x2E) then
 			number_error()
 		end
@@ -485,7 +489,10 @@ local function newparser(src, saxtbl)
 	local function f_str(iskey)
 		local pos2 = pos
 		local newpos
-		local str = ''
+		local str
+		-- pieces of a string spanning multiple chunks; concatenating them one by
+		-- one would take quadratic time
+		local buf, nbuf = nil, 0
 		local bs
 		while true do
 			while true do  -- search '\' or '"'
@@ -493,7 +500,11 @@ local function newparser(src, saxtbl)
 				if newpos then
 					break
 				end
-				str = str .. sub(json, pos, jsonlen)
+				nbuf = nbuf+1
+				if nbuf == 1 then
+					buf = {}
+				end
+				buf[nbuf] = sub(json, pos, jsonlen)
 				if pos2 == jsonlen+2 then
 					pos2 = 2
 				else
@@ -510,7 +521,11 @@ local function newparser(src, saxtbl)
 			pos2 = newpos+2  -- skip '\<char>'
 			bs = true  -- mark the existence of a backslash
 		end
-		str = str .. sub(json, pos, newpos-1)
+		str = sub(json, pos, newpos-1)
+		if buf then
+			buf[nbuf+1] = str
+			str = concat(buf)
+		end
 		pos = newpos+1
 
 		if find(str, f_str_ctrl_pat) then
@@ -695,8 +710,10 @@ local function newparser(src, saxtbl)
 		local pos2 = (pos-1) + n
 		local str = sub(json, pos, pos2)
 		while pos2 > jsonlen and jsonlen ~= 0 do
+			-- convert pos2 to the position in the next chunk, using the length
+			-- of the current chunk (chunks may have different lengths)
+			pos2 = pos2 - jsonlen
 			jsonnxt()
-			pos2 = pos2 - (jsonlen - (pos-1))
 			str = str .. sub(json, pos, pos2)
 		end
 		if jsonlen ~= 0 then

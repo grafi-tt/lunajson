@@ -3,6 +3,7 @@ local byte, find, format, gsub, match = string.byte, string.find, string.format,
 local concat = table.concat
 local tostring = tostring
 local pairs, type = pairs, type
+local mtype = math.type
 local setmetatable = setmetatable
 local huge, tiny = 1/0, -1/0
 
@@ -44,6 +45,13 @@ local function newencoder()
 	end
 
 	local f_number = function(n)
+		-- integers (Lua 5.3+) must not go through %.17g, which converts them to
+		-- floats and loses precision beyond 2^53
+		if mtype and mtype(n) == 'integer' then
+			builder[i] = format('%d', n)
+			i = i+1
+			return
+		end
 		if tiny < n and n < huge then
 			local s = format("%.17g", n)
 			if radixordelim then
@@ -102,7 +110,7 @@ local function newencoder()
 				builder[i] = ','
 				i = i+1
 			end
-			if tmp > 0 then
+			if tmp >= 1 then  -- remove the trailing ',' if any element was written
 				i = i-1
 			end
 			builder[i] = ']'

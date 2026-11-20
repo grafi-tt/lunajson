@@ -169,6 +169,266 @@ tests['sax keeps -0 across chunks'] = function()
 	end
 end
 
+-- The key cache of a reused decoder must not keep keys of past calls alive.
+tests['decoder does not retain keys across calls'] = function()
+	local decode = require 'lunajson'.decode
+	local pad = string.rep('x', 10)  -- short enough to be cached
+	local function round(r)
+		local parts = {}
+		for k = 1, 1000 do
+			parts[k] = '"' .. r .. '_' .. k .. pad .. '":1'
+		end
+		decode('{' .. table.concat(parts, ',') .. '}')
+	end
+	round(0)
+	collectgarbage()
+	collectgarbage()
+	local base = collectgarbage('count')
+	for r = 1, 50 do  -- 50000 unique keys, several MB if leaked
+		round(r)
+	end
+	collectgarbage()
+	collectgarbage()
+	local grown = collectgarbage('count') - base
+	if grown > 2048 then
+		return string.format('%.1f KB retained', grown)
+	end
+end
+
+-- A string spanning many chunks must be assembled in linear time.
+-- Quadrupling the length should take about 4x time (quadratic: about 16x).
+tests['sax assembles long strings in linear time'] = function()
+	local sax = require 'lunajson.sax'
+	local function run(n)
+		local json = '"' .. string.rep('a', n) .. '"'
+		local i = 1
+		local function gen()  -- 1-byte chunks
+			if i > #json then
+				return nil
+			end
+			local s = string.sub(json, i, i)
+			i = i+1
+			return s
+		end
+		local got
+		local t = os.clock()
+		sax.newparser(gen, {string = function(s) got = s end}).run()
+		t = os.clock() - t
+		if got ~= string.sub(json, 2, -2) then
+			error('wrong result')
+		end
+		return t
+	end
+	run(1000)  -- warm up
+	local best = math.huge
+	for _ = 1, 2 do  -- take the better one to reduce noise
+		local ratio = run(400000) / math.max(run(100000), 1e-3)
+		if ratio < best then
+			best = ratio
+		end
+	end
+	if best > 8 then
+		return string.format('time grows superlinearly: 4x length took %.1fx time', best)
+	end
+end
+
+-- Integers (Lua 5.3+) must be encoded exactly.
+tests['encoder keeps integer precision'] = function()
+	if not math.type then
+		return  -- no integer subtype
+	end
+	local lj = require 'lunajson'
+	local cases = {
+		{9007199254740993, '9007199254740993'},
+		{-9007199254740993, '-9007199254740993'},
+		{math.maxinteger, tostring(math.maxinteger)},
+		{math.mininteger, tostring(math.mininteger)},
+		{0, '0'},
+		{123, '123'},
+	}
+	for _, c in ipairs(cases) do
+		local json = lj.encode(c[1])
+		if json ~= c[2] then
+			return 'encoded ' .. c[2] .. ' as ' .. json
+		end
+		local v = lj.decode(json)
+		if v ~= c[1] or math.type(v) ~= 'integer' then
+			return 'round trip of ' .. c[2] .. ' gave ' .. tostring(v)
+		end
+	end
+	if lj.encode({1, 2.5, 9007199254740993}) ~= '[1,2.5,9007199254740993]' then
+		return 'wrong array encoding: ' .. lj.encode({1, 2.5, 9007199254740993})
+	end
+end
+
+-- a generator that returns chunks of the given sizes (cycled)
+local function chunked(s, sizes)
+	local i, k = 1, 0
+	return function()
+		if i > #s then
+			return nil
+		end
+		k = k % #sizes + 1
+		local c = string.sub(s, i, i + sizes[k] - 1)
+		i = i + sizes[k]
+		return c
+	end
+end
+
+-- `read` must work with chunks of varying lengths, such as input from sockets,
+-- or a file whose last chunk is shorter than the others.
+tests['sax read with varying chunk sizes'] = function()
+	local sax = require 'lunajson.sax'
+	local data = string.rep('0123456789', 3000)  -- 30000 bytes
+	local src = data .. '[1]'
+	local patterns = {{4}, {3, 5}, {2, 7}, {1, 3}, {5, 1, 1}, {8192, 3}}
+	local reads = {10, 1, 0, 7, 25, 8192, 3, 13000}  -- in total 29248 bytes
+	for _, sizes in ipairs(patterns) do
+		local p = sax.newparser(chunked(src, sizes), {})
+		local pos = 1
+		local label = 'chunk sizes ' .. table.concat(sizes, ',')
+		for _, n in ipairs(reads) do
+			local s = p.read(n)
+			if s ~= string.sub(data, pos, pos + n - 1) then
+				return string.format('%s: read(%d) at %d returned %d bytes', label, n, pos, #s)
+			end
+			pos = pos + n
+			if p.tellpos() ~= pos then
+				return string.format('%s: tellpos %d, expected %d', label, p.tellpos(), pos)
+			end
+		end
+		local rest = p.read(#data - pos + 1)  -- up to just before '[1]'
+		if rest ~= string.sub(data, pos) then
+			return label .. ': the last read returned wrong bytes'
+		end
+		-- the JSON value after the raw bytes must be parsed correctly
+		local got
+		local ok, err = pcall(function()
+			local q = sax.newparser(chunked(src, sizes), {number = function(n) got = n end})
+			q.read(#data)
+			q.run()
+		end)
+		if not ok then
+			return label .. ': ' .. tostring(err)
+		end
+		if got ~= 1 then
+			return label .. ': value after read is wrong'
+		end
+	end
+end
+
+-- In a stream of values, a number may be directly followed by '[' or '{'.
+-- The result must not depend on where chunks are split.
+tests['sax number followed by bracket at chunk boundary'] = function()
+	local sax = require 'lunajson.sax'
+	local cases = {
+		{'1[2]', 1, '[', 2},
+		{'1{}', 1, '{'},
+		{'0[2]', 0, '[', 2},
+		{'-1[2]', -1, '[', 2},
+		{'1.5[2]', 1.5, '[', 2},
+		{'1e2{}', 100, '{'},
+	}
+	for _, c in ipairs(cases) do
+		for _, size in ipairs({1, 2, 3, 100}) do
+			local nums = {}
+			local p = sax.newparser(chunked(c[1], {size}), {number = function(n) nums[#nums+1] = n end})
+			local ok, err = pcall(function()
+				p.run()
+				if p.tryc() ~= string.byte(c[3]) then
+					error('next byte is not ' .. c[3])
+				end
+				p.run()
+			end)
+			if not ok then
+				return string.format('%s with chunk size %d: %s', c[1], size, tostring(err))
+			end
+			if nums[1] ~= c[2] or nums[2] ~= c[4] then
+				return string.format('%s with chunk size %d: wrong values', c[1], size)
+			end
+		end
+	end
+	-- letters directly after a number are still errors
+	for _, json in ipairs({'1Z', '1z', '1A', '1a'}) do
+		for _, size in ipairs({1, 100}) do
+			if pcall(sax.newparser(chunked(json, {size}), {}).run) then
+				return json .. ' accepted with chunk size ' .. size
+			end
+		end
+	end
+end
+
+-- `tellpos` must be consistent between string and function sources,
+-- also after reading past the end of the input.
+tests['sax tellpos after reading past the end'] = function()
+	local sax = require 'lunajson.sax'
+	local function sources(s)
+		return {
+			string = function() return s end,
+			whole = function() local d = s return function() local r = d d = nil return r end end,
+			bytes = function() return chunked(s, {1}) end,
+		}
+	end
+	-- each case: a sequence of operations and the expected results
+	local cases = {
+		{{'read', 10, 'abc'}, {'tellpos', 4}},
+		{{'read', 2, 'ab'}, {'read', 5, 'c'}, {'tellpos', 4}},
+		{{'read', 3, 'abc'}, {'tellpos', 4}, {'read', 1, ''}, {'tellpos', 4}},
+		{{'read', 4, 'abc'}, {'tryc', nil}, {'tellpos', 4}},
+		{{'tryc', 0x61}, {'read', 100, 'abc'}, {'tellpos', 4}, {'read', 0, ''}, {'tellpos', 4}},
+	}
+	for name, mk in pairs(sources('abc')) do
+		for k, case in ipairs(cases) do
+			local p = sax.newparser(mk(), {})
+			for _, op in ipairs(case) do
+				local got
+				if op[1] == 'read' then
+					got = p.read(op[2])
+					if got ~= op[3] then
+						return string.format('%s source, case %d: read(%d) gave %q', name, k, op[2], got)
+					end
+				elseif op[1] == 'tryc' then
+					got = p.tryc()
+					if got ~= op[2] then
+						return string.format('%s source, case %d: tryc gave %s', name, k, tostring(got))
+					end
+				else
+					got = p.tellpos()
+					if got ~= op[2] then
+						return string.format('%s source, case %d: tellpos %d, expected %d', name, k, got, op[2])
+					end
+				end
+			end
+		end
+	end
+	-- after a value at the end of a string source
+	local p = sax.newparser('[1] ', {})
+	p.run()
+	p.read(5)
+	if p.tellpos() ~= 5 then
+		return 'tellpos after run and read: ' .. p.tellpos()
+	end
+end
+
+-- An array length given by [0] must not produce invalid JSON.
+tests['encoder with fractional array length'] = function()
+	local encode = require 'lunajson'.encode
+	local cases = {
+		{{[0] = 0}, '[]'},
+		{{[0] = 0.5}, '[]'},
+		{{[0] = -1}, '[]'},
+		{{[0] = 1, 'a'}, '["a"]'},
+		{{[0] = 1.5, 'a', 'b'}, '["a"]'},
+		{{[0] = 2, 'a'}, '["a",null]'},
+	}
+	for _, c in ipairs(cases) do
+		local json = encode(c[1])
+		if json ~= c[2] then
+			return string.format('[0]=%s gave %s, expected %s', tostring(c[1][0]), json, c[2])
+		end
+	end
+end
+
 local names = {}
 for name in pairs(tests) do
 	names[#names+1] = name
