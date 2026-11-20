@@ -116,7 +116,13 @@ local function newencoder()
 			builder[i] = '['
 			i = i+1
 			for j = 1, tmp do
-				doencode(o[j])
+				local elem = o[j]
+				if elem == nil then  -- null even if a custom nullv is given
+					builder[i] = 'null'
+					i = i+1
+				else
+					doencode(elem)
+				end
 				builder[i] = ','
 				i = i+1
 			end

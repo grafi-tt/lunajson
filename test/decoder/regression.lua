@@ -442,6 +442,29 @@ tests['encoder with fractional array length'] = function()
 	end
 end
 
+-- nil elements of an array with [0] length are encoded as null, also when a
+-- custom nullv is given
+tests['encoder with nil elements and a custom nullv'] = function()
+	local encode = require 'lunajson'.encode
+	local null = {}
+	local cases = {
+		{{[0] = 3, 1, nil, 3}, nil, '[1,null,3]'},
+		{{[0] = 3, 1, nil, 3}, null, '[1,null,3]'},
+		{{[0] = 3, 1, null, 3}, null, '[1,null,3]'},
+		{{[0] = 2}, null, '[null,null]'},
+		{{[0] = 2, nil, {[0] = 1}}, null, '[null,[null]]'},
+	}
+	for n, c in ipairs(cases) do
+		local ok, json = pcall(encode, c[1], c[2])
+		if not ok then
+			return 'case ' .. n .. ': ' .. json
+		end
+		if json ~= c[3] then
+			return 'case ' .. n .. ': gave ' .. json .. ', expected ' .. c[3]
+		end
+	end
+end
+
 -- Without `pos`, nothing but spaces may follow the value.
 tests['decoder rejects trailing garbage'] = function()
 	local decode = require 'lunajson'.decode
