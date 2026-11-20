@@ -112,7 +112,6 @@ for _, decoder in ipairs(decoders) do
 	for _, fn in ipairs(invalid_data) do
 		io.write('    ' .. fn  .. ': ')
 		fn = 'invalid_data/' .. fn
-		test_invalid(decode, fn)
 		local err = test_invalid(decode, fn)
 		if err then
 			iserr = true

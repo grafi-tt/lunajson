@@ -60,14 +60,15 @@ local function test(round)
 end
 
 
-io.write('parse: ')
+local iserr = false
 for round = 1, 2 do
+	io.write('parse (round ' .. round .. '): ')
 	local err = test(round)
 	if err then
+		iserr = true
 		io.write(err .. '\n')
-		return true
 	else
 		io.write('ok\n')
-		return false
 	end
 end
+return iserr

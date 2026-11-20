@@ -27,6 +27,10 @@ local function newencoder()
 		i = i+1
 	end
 
+	-- deal with non-standard locales
+	-- The decimal mark is checked only once, when the encoder is created.
+	-- Changing the locale (os.setlocale or setlocale in C) after that is not
+	-- supported, as checking it for every call would slow down encoding.
 	local radixmark = match(tostring(0.5), '[^0-9]')
 	local delimmark = match(tostring(12345.12345), '[^0-9' .. radixmark .. ']')
 	if radixmark == '.' then
@@ -42,6 +46,12 @@ local function newencoder()
 		if delimmark and find(delimmark, '%W') then
 			delimmark = '%' .. delimmark
 		end
+	end
+
+	local function encode_error(errmsg)
+		-- do not keep the value and the buffer alive after an error
+		v, nullv, builder, visited = nil, nil, nil, nil
+		error(errmsg, 2)
 	end
 
 	local f_number = function(n)
@@ -66,7 +76,7 @@ local function newencoder()
 			i = i+1
 			return
 		end
-		error('invalid number')
+		encode_error('invalid number')
 	end
 
 	local doencode
@@ -97,7 +107,7 @@ local function newencoder()
 
 	local function f_table(o)
 		if visited[o] then
-			error("loop detected")
+			encode_error("loop detected")
 		end
 		visited[o] = true
 
@@ -139,7 +149,7 @@ local function newencoder()
 				local tmp = i
 				for k, v in pairs(o) do
 					if type(k) ~= 'string' then
-						error("non-string key")
+						encode_error("non-string key")
 					end
 					f_string(k)
 					builder[i] = ':'
@@ -165,7 +175,7 @@ local function newencoder()
 		string = f_string,
 		table = f_table,
 		__index = function()
-			error("invalid type value")
+			encode_error("invalid type value")
 		end
 	}
 	setmetatable(dispatcher, dispatcher)
@@ -184,7 +194,10 @@ local function newencoder()
 		i, builder, visited = 1, {}, {}
 
 		doencode(v)
-		return concat(builder)
+		local s = concat(builder)
+		-- do not keep the value and the buffer alive until the next call
+		v, nullv, builder, visited = nil, nil, nil, nil
+		return s
 	end
 
 	return encode

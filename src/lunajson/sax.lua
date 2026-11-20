@@ -2,8 +2,8 @@ local setmetatable, tonumber, tostring =
       setmetatable, tonumber, tostring
 local floor, inf =
       math.floor, math.huge
-local mininteger, tointeger =
-      math.mininteger or nil, math.tointeger or nil
+local mininteger, mtype =
+      math.mininteger or nil, math.type or nil
 local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
 
@@ -22,6 +22,10 @@ end
 local type, unpack = type, table.unpack or unpack
 local concat = table.concat
 local open = io.open
+
+-- Lua 5.3.0-5.3.2 wrap decimal integers that overflow (e.g.
+-- 18446744073709551617 becomes 1) instead of converting them to floats
+local intwraps = mtype and mtype(tonumber('9223372036854775808')) == 'integer'
 
 -- -0.0 must be made at runtime: as a literal, Lua 5.1/5.2 merges it with 0
 -- (and Lua 5.3 with 0.0) into one constant when they appear in one function
@@ -169,6 +173,9 @@ local function newparser(src, saxtbl)
 		is captured as a number and its conformance to the JSON spec is checked.
 	--]]
 	-- deal with non-standard locales
+	-- The decimal mark is checked only once, when the parser is created.
+	-- Changing the locale (os.setlocale or setlocale in C) after that is not
+	-- supported, as checking it for every number would slow down decoding.
 	local radixmark = match(tostring(0.5), '[^0-9]')
 	local fixedtonumber = tonumber
 	if radixmark ~= '.' then
@@ -181,6 +188,17 @@ local function newparser(src, saxtbl)
 			-- so that it is not passed to tonumber as the base
 			return tonumber((gsub(s, '%.', radixmark)))
 		end
+	end
+
+	-- work around `intwraps`; `num` is a JSON number of at least 19 characters
+	local function fix_bigint(num, c)
+		if mtype(c) == 'integer' then
+			local f = tonumber(num .. 'e0')  -- the same value as a float
+			if c + 0.0 ~= f then  -- equal unless wrapped around
+				return f
+			end
+		end
+		return c
 	end
 
 	local function number_error()
@@ -237,8 +255,11 @@ local function newparser(src, saxtbl)
 		end
 		pos = pos-1
 
-		local num = char(unpack(buf))
-		num = fixedtonumber(num)
+		local str = char(unpack(buf))
+		local num = fixedtonumber(str)
+		if intwraps and #str >= 19 then
+			num = fix_bigint(str, num)
+		end
 		if mns then
 			if num == 0 then
 				num = minus_zero  -- negating integer 0 does not give -0.0 in Lua 5.3+
@@ -338,6 +359,9 @@ local function newparser(src, saxtbl)
 			return generic_number(mns)
 		end
 		c = fixedtonumber(num)
+		if intwraps and #num >= 19 then
+			c = fix_bigint(num, c)
+		end
 
 		if mns then
 			c = -c

@@ -2,8 +2,8 @@ local setmetatable, tonumber, tostring =
       setmetatable, tonumber, tostring
 local floor, inf =
       math.floor, math.huge
-local mininteger, tointeger =
-      math.mininteger or nil, math.tointeger or nil
+local mininteger, mtype =
+      math.mininteger or nil, math.type or nil
 local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
 
@@ -18,6 +18,10 @@ if _VERSION == "Lua 5.1" then
 else
 	f_str_ctrl_pat = '[\0-\31]'
 end
+
+-- Lua 5.3.0-5.3.2 wrap decimal integers that overflow (e.g.
+-- 18446744073709551617 becomes 1) instead of converting them to floats
+local intwraps = mtype and mtype(tonumber('9223372036854775808')) == 'integer'
 
 -- -0.0 must be made at runtime: as a literal, Lua 5.1/5.2 merges it with 0
 -- (and Lua 5.3 with 0.0) into one constant when they appear in one function
@@ -38,6 +42,7 @@ local function newdecoder()
 		Helper
 	--]]
 	local function decode_error(errmsg)
+		json, nullv = nil, nil  -- do not keep them alive after an error
 		return _decode_error(pos, errmsg)
 	end
 
@@ -84,6 +89,9 @@ local function newdecoder()
 		is captured as a number and its conformance to the JSON spec is checked.
 	--]]
 	-- deal with non-standard locales
+	-- The decimal mark is checked only once, when the decoder is created.
+	-- Changing the locale (os.setlocale or setlocale in C) after that is not
+	-- supported, as checking it for every number would slow down decoding.
 	local radixmark = match(tostring(0.5), '[^0-9]')
 	local fixedtonumber = tonumber
 	if radixmark ~= '.' then
@@ -96,6 +104,17 @@ local function newdecoder()
 			-- so that it is not passed to tonumber as the base
 			return tonumber((gsub(s, '%.', radixmark)))
 		end
+	end
+
+	-- work around `intwraps`; `num` is a JSON number of at least 19 characters
+	local function fix_bigint(num, c)
+		if mtype(c) == 'integer' then
+			local f = tonumber(num .. 'e0')  -- the same value as a float
+			if c + 0.0 ~= f then  -- equal unless wrapped around
+				return f
+			end
+		end
+		return c
 	end
 
 	local function number_error()
@@ -169,6 +188,9 @@ local function newdecoder()
 
 		pos = pos + #num
 		c = fixedtonumber(num)
+		if intwraps and #num >= 19 then
+			c = fix_bigint(num, c)
+		end
 
 		if mns then
 			c = -c
@@ -523,15 +545,18 @@ local function newdecoder()
 		pos = pos+1
 		local v = f()
 
-		if pos_ then
-			return v, pos
-		else
+		if not pos_ then
 			f, pos = find(json, '^[ \n\r\t]*', pos)
 			if pos ~= #json then
 				decode_error('json ended')
 			end
-			return v
 		end
+		-- do not keep the input and the sentinel alive until the next call
+		json, nullv, f = nil, nil, nil
+		if pos_ then
+			return v, pos
+		end
+		return v
 	end
 
 	return decode

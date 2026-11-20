@@ -95,36 +95,49 @@ tests['surrogate state is reset after an error'] = function()
 	end
 end
 
--- Simulate a locale whose decimal mark is ',' (e.g. de_DE with Lua 5.1),
--- where tostring prints "0,5" and tonumber only accepts "1,5".
--- The modules capture these functions when loaded, so load fresh copies.
-local function load_with_comma_locale(modname)
-	local orig_tostring, orig_tonumber = tostring, tonumber
+-- Load a fresh copy of a module while some global functions are replaced,
+-- as the modules capture them when loaded.
+local function load_with(modname, globals)
+	local saved_globals = {}
+	for k, f in pairs(globals) do
+		saved_globals[k] = _G[k]
+		_G[k] = f
+	end
 	local saved = package.loaded[modname]
 	package.loaded[modname] = nil
-	tostring = function(v)
-		local s = orig_tostring(v)
-		if type(v) == 'number' then
-			s = string.gsub(s, '%.', ',')
-		end
-		return s
-	end
-	tonumber = function(s, base)
-		if base == nil and type(s) == 'string' then
-			if string.find(s, '.', 1, true) then
-				return nil
-			end
-			s = string.gsub(s, ',', '.')
-		end
-		return orig_tonumber(s, base)
-	end
 	local ok, mod = pcall(require, modname)
-	tostring, tonumber = orig_tostring, orig_tonumber
+	for k, f in pairs(saved_globals) do
+		_G[k] = f
+	end
 	package.loaded[modname] = saved
 	if not ok then
 		error(mod, 0)
 	end
 	return mod
+end
+
+-- Simulate a locale whose decimal mark is ',' (e.g. de_DE with Lua 5.1),
+-- where tostring prints "0,5" and tonumber only accepts "1,5".
+local function load_with_comma_locale(modname)
+	local orig_tostring, orig_tonumber = tostring, tonumber
+	return load_with(modname, {
+		tostring = function(v)
+			local s = orig_tostring(v)
+			if type(v) == 'number' then
+				s = string.gsub(s, '%.', ',')
+			end
+			return s
+		end,
+		tonumber = function(s, base)
+			if base == nil and type(s) == 'string' then
+				if string.find(s, '.', 1, true) then
+					return nil
+				end
+				s = string.gsub(s, ',', '.')
+			end
+			return orig_tonumber(s, base)
+		end,
+	})
 end
 
 local locale_json = '[1,15,1.5,-2.5e3,0.25,-0.5,10]'
@@ -425,6 +438,138 @@ tests['encoder with fractional array length'] = function()
 		local json = encode(c[1])
 		if json ~= c[2] then
 			return string.format('[0]=%s gave %s, expected %s', tostring(c[1][0]), json, c[2])
+		end
+	end
+end
+
+-- Without `pos`, nothing but spaces may follow the value.
+tests['decoder rejects trailing garbage'] = function()
+	local decode = require 'lunajson'.decode
+	for _, json in ipairs({'[1]x', '{}}', '[][]', '1 2', '"a"b', '[1]]', 'nulll', 'truex', '0 0'}) do
+		local ok, err = pcall(decode, json)
+		if ok then
+			return 'not errored: ' .. json
+		end
+		if not string.find(err, 'parse error at ', 1, true) then
+			return string.format('%q', err)
+		end
+	end
+	for _, json in ipairs({'[1] ', '[1]\n\t\r ', ' 1 '}) do
+		local ok, err = pcall(decode, json)
+		if not ok then
+			return string.format('%q', err)
+		end
+	end
+end
+
+-- Lua 5.3.0-5.3.2 wrap decimal integers that overflow instead of converting
+-- them to floats. Test with the real tonumber, and with one that wraps
+-- around like those versions.
+if math.type then
+	local orig_tonumber = tonumber
+	local function wrapping_tonumber(s, base)
+		if base == nil and type(s) == 'string' and string.find(s, '^%-?[0-9]+$') then
+			local a = 0
+			for d in string.gmatch(s, '[0-9]') do
+				a = a * 10 + (string.byte(d) - 48)  -- integer arithmetic wraps around
+			end
+			if string.sub(s, 1, 1) == '-' then
+				a = -a
+			end
+			return a
+		end
+		return orig_tonumber(s, base)
+	end
+
+	local json = '[18446744073709551617,9223372036854775808,-9223372036854775808,' ..
+		'9223372036854775807,-9223372036854775807,-18446744073709551616,' ..
+		'12345678901234567890123,1234567890123456789,10]'
+	local ans = {
+		18446744073709551617.0, 9223372036854775808.0, math.mininteger,
+		math.maxinteger, -math.maxinteger, -18446744073709551616.0,
+		12345678901234567890123.0, 1234567890123456789, 10
+	}
+
+	tests['big integers are not wrapped around'] = function()
+		for _, tn in ipairs({orig_tonumber, wrapping_tonumber}) do
+			local kind = tn == orig_tonumber and 'tonumber' or 'wrapping tonumber'
+			if wrapping_tonumber('18446744073709551617') ~= 1 then
+				return 'wrapping tonumber is broken'
+			end
+			local decode = load_with('lunajson.decoder', {tonumber = tn})()
+			local ok, v = pcall(decode, json)
+			if not ok then
+				return kind .. ': ' .. string.format('%q', v)
+			end
+			if not same(v, ans) then
+				return kind .. ': decoder gave a wrong result'
+			end
+			local sax = load_with('lunajson.sax', {tonumber = tn})
+			-- chunk size 1 exercises the fallback number parser
+			for _, chunksize in ipairs({1, 8192}) do
+				ok, v = pcall(sax_decode, sax, json, chunksize)
+				if not ok then
+					return kind .. ': ' .. string.format('%q', v)
+				end
+				if not same(v, ans) then
+					return kind .. ': sax gave a wrong result with chunk size ' .. chunksize
+				end
+			end
+		end
+	end
+end
+
+-- The decoder and the encoder must not keep the last input/output (which can
+-- be huge) alive until the next call, either after success or after an error.
+local function find_upvalues(f, names)
+	local found = {}
+	local i = 1
+	while true do
+		local name, value = debug.getupvalue(f, i)
+		if not name then
+			break
+		end
+		if names[name] then
+			found[name] = true
+			if value ~= nil then
+				return name .. ' is kept'
+			end
+		end
+		i = i+1
+	end
+	for name in pairs(names) do
+		if not found[name] then
+			return 'upvalue ' .. name .. ' not found'
+		end
+	end
+end
+
+tests['decoder does not keep the last input'] = function()
+	local decode = require 'lunajson.decoder'()
+	local names = {json = true, nullv = true}
+	local null = {}
+	for _, call in ipairs({
+		{'[1,null]', nil, null}, {'[1] ', 1, null}, {'[1,', nil, null}, {'[1]x', nil, null},
+		{'"' .. u'D840' .. '"', nil, null}, {'[1.]', 1, null},
+	}) do
+		pcall(decode, call[1], call[2], call[3])
+		local err = find_upvalues(decode, names)
+		if err then
+			return err .. ' after decoding ' .. call[1]
+		end
+	end
+end
+
+tests['encoder does not keep the last value'] = function()
+	local encode = require 'lunajson.encoder'()
+	local names = {v = true, nullv = true, builder = true, visited = true}
+	local loop = {}
+	loop[1] = loop
+	for _, v in ipairs({{1, 'a', {x = 0.5}}, {0/0}, {print}, loop, {[true] = 1}}) do
+		pcall(encode, v, {})
+		local err = find_upvalues(encode, names)
+		if err then
+			return err
 		end
 	end
 end
