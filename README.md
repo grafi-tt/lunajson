@@ -33,9 +33,9 @@ If this constraint is not met or unsupported types (e.g. function) are contained
 
 ### lunajson.newparser(input, saxtbl)
 ### lunajson.newfileparser(filename, saxtbl)
-Create and return a sax-style parser context, which parses `input` or a file specified by `filename`. `input` can be a string to be parsed, or a function that returns the next chunk of a data as a string to be parsed (or `nil` when all data is yielded). An example function for `input` follows (this sample is essentially same as the implementation of `newfileparser`). Note that `input` will never be called once it has returned `nil`.
+Create and return a sax-style parser context, which parses `input` or a file specified by `filename`. `input` can be a string to be parsed, or a function that returns the next chunk of a data as a string to be parsed (or `nil` when all data is yielded). An example function for `input` follows (this sample is essentially same as the implementation of `newfileparser`). Note that `input` will never be called once it has returned `nil`. `newfileparser` raises an error if the file cannot be opened.
 
-	local fp = io.open("myfavorite.json")
+	local fp = assert(io.open("myfavorite.json", "rb"))
 	local function input()
 		local s
 		if fp then

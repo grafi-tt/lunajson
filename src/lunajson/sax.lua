@@ -7,6 +7,8 @@ local mininteger, mtype =
 local byte, char, find, gsub, match, sub =
       string.byte, string.char, string.find, string.gsub, string.match, string.sub
 
+local error = error
+
 local function _parse_error(pos, errmsg)
 	error("parse error at " .. pos .. ": " .. errmsg, 2)
 end
@@ -759,7 +761,12 @@ local function newparser(src, saxtbl)
 end
 
 local function newfileparser(fn, saxtbl)
-	local fp = open(fn)
+	-- binary mode, so that the positions are byte offsets and the input is
+	-- not altered (e.g. CRLF and Ctrl-Z in text mode on Windows)
+	local fp, err = open(fn, 'rb')
+	if not fp then
+		error(err, 2)
+	end
 	local function gen()
 		local s
 		if fp then

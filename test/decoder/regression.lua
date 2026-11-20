@@ -574,6 +574,66 @@ tests['encoder does not keep the last value'] = function()
 	end
 end
 
+-- newfileparser must report a file that cannot be opened, instead of parsing
+-- it as an empty input
+tests['newfileparser raises the error of io.open'] = function()
+	local sax = require 'lunajson.sax'
+	local fn = os.tmpname()
+	os.remove(fn)
+	local ok, err = pcall(sax.newfileparser, fn, {})
+	if ok then
+		return 'no error for a missing file'
+	end
+	if not string.find(err, fn, 1, true) or string.find(err, 'parse error', 1, true) then
+		return 'unexpected error: ' .. err
+	end
+end
+
+-- newfileparser must open files in binary mode; in text mode on Windows, CRLF
+-- becomes LF (shifting the positions) and Ctrl-Z ends the input
+tests['newfileparser opens files in binary mode'] = function()
+	local orig_io = io
+	local mode
+	local sax = load_with('lunajson.sax', {
+		io = setmetatable({
+			open = function(fn, m)
+				mode = m
+				return orig_io.open(fn, m)
+			end,
+		}, {__index = orig_io}),
+	})
+
+	local fn = os.tmpname()
+	local function parse(content, saxtbl)
+		local fp = assert(io.open(fn, 'wb'))
+		fp:write(content)
+		fp:close()
+		local parser = sax.newfileparser(fn, saxtbl)
+		return parser, pcall(parser.run)
+	end
+
+	local got = {}
+	local parser, ok, err = parse('[1,\r\n"x"]\r\n', {
+		number = function(n) got[#got+1] = n end,
+		string = function(s) got[#got+1] = s end,
+	})
+	local ctrl_ok, ctrl_err = select(2, parse('["\26"]', {}))
+	os.remove(fn)
+
+	if mode ~= 'rb' then
+		return 'opened with mode ' .. tostring(mode)
+	end
+	if not ok then
+		return 'CRLF: ' .. err
+	end
+	if got[1] ~= 1 or got[2] ~= 'x' or parser.tellpos() ~= 10 then
+		return 'CRLF: wrong position ' .. parser.tellpos()
+	end
+	if ctrl_ok or not string.find(ctrl_err, 'unescaped control string', 1, true) then
+		return 'Ctrl-Z: ' .. tostring(ctrl_err)
+	end
+end
+
 local names = {}
 for name in pairs(tests) do
 	names[#names+1] = name
