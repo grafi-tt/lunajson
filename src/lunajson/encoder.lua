@@ -206,7 +206,7 @@ local function newencoder()
 		return s
 	end
 
-	return encode
+	return encode, dispatcher
 end
 
 return newencoder
